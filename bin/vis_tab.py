@@ -702,7 +702,7 @@ class Vis(QWidget):
         current_frame = frame
         fname = "snapshot%08d.svg" % frame
         full_fname = os.path.join(self.output_dir, fname)
-        print("   ==>>>>> plot_svg(): full_fname=",full_fname)
+        # print("   ==>>>>> plot_svg(): full_fname=",full_fname)
         # with debug_view:
             # print("plot_svg:", full_fname) 
         # print("-- plot_svg:", full_fname) 
