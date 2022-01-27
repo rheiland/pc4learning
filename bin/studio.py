@@ -120,10 +120,11 @@ class PhysiCellXMLCreator(QWidget):
         copy_file = "copy_" + model_name + ".xml"
         shutil.copy(read_file, copy_file)
         if self.nanohub_flag:
-            self.setWindowTitle(self.title_prefix + "pc4learning")
+            # self.setWindowTitle(self.title_prefix + "pc4learning")
+            self.setWindowTitle(self.title_prefix + copy_file)
         else:
-            # self.setWindowTitle(self.title_prefix + copy_file)
-            self.setWindowTitle(self.title_prefix + "pc4learning")
+            self.setWindowTitle(self.title_prefix + copy_file)
+            # self.setWindowTitle(self.title_prefix + "pc4learning")
         # self.add_new_model(copy_file, True)
         # self.config_file = "config_samples/" + name + ".xml"
         self.config_file = copy_file  # to Save
@@ -328,11 +329,11 @@ class PhysiCellXMLCreator(QWidget):
     #-----------------------------------------------------------------
     def add_new_model(self, name, read_only):
         # does it already exist? If so, return
-        if name in self.model.keys():
-            return
-        self.model[name] = read_only
+        # if name in self.model.keys():
+        #     return
+        # self.model[name] = read_only
         # self.num_models += 1
-        print("add_new_model(): self.model (dict)= ",self.model)
+        # print("add_new_model(): self.model (dict)= ",self.model)
 
         # models_menu_act = QAction(name, self)
         # self.models_menu.addAction(models_menu_act)
@@ -343,16 +344,19 @@ class PhysiCellXMLCreator(QWidget):
 
         #---------- rwh?
         print("\n\n ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        print("add_new_model(): self.tree = ET.parse(xml_file) for ",self.config_file)
-        with open(self.config_file, 'r') as xml_file:
+        # print("add_new_model(): self.tree = ET.parse(xml_file) for ",self.config_file)
+        print("add_new_model(): self.tree = ET.parse(xml_file) for ",name)
+        # with open(self.config_file, 'r') as xml_file:
+        with open(name, 'r') as xml_file:
             self.tree = ET.parse(xml_file)
         # tree = ET.parse(read_file)
         # self.tree = ET.parse(read_file)
         self.xml_root = self.tree.getroot()
 
-        self.num_models = 0
-        self.model = {}  # key: name, value:[read-only, tree]
+        # self.num_models = 0
+        # self.model = {}  # key: name, value:[read-only, tree]
 
+        #-------  Re-populate the GUI with the new model's params -------
         # self.config_tab = Config(self.nanohub_flag)
         self.config_tab.xml_root = self.xml_root
         self.config_tab.fill_gui()
@@ -386,8 +390,10 @@ class PhysiCellXMLCreator(QWidget):
 
 
     def reset_xml_root(self):
-        self.celldef_tab.clear_custom_data_tab()
         self.celldef_tab.param_d.clear()  # seems unnecessary as being done in populate_tree. argh.
+        self.celldef_tab.clear_custom_data_tab()
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        print("reset_xml_root(): after celldef_tab.param_d.clear(), param_d = ", self.celldef_tab.param_d)
         self.celldef_tab.current_cell_def = None
         # self.microenv_tab.param_d.clear()
 
@@ -397,7 +403,9 @@ class PhysiCellXMLCreator(QWidget):
         self.celldef_tab.xml_root = self.xml_root
         # self.cell_customdata_tab.xml_root = self.xml_root
         self.user_params_tab.xml_root = self.xml_root
+        # self.run_tab.xml_root = self.xml_root
 
+        # --------Now fill all tabs' params------
         self.config_tab.fill_gui()
 
         self.microenv_tab.clear_gui()
@@ -424,9 +432,10 @@ class PhysiCellXMLCreator(QWidget):
         self.user_params_tab.fill_gui()
 
     def show_sample_model(self):
-        print("show_sample_model: self.config_file = ", self.config_file)
+        print("studio.py: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~show_sample_model(): self.config_file = ", self.config_file)
         # self.config_file = "config_samples/biorobots.xml"
         self.tree = ET.parse(self.config_file)
+        self.run_tab.tree = self.tree
         # self.xml_root = self.tree.getroot()
         self.reset_xml_root()
         self.setWindowTitle(self.title_prefix + self.config_file)
@@ -544,16 +553,18 @@ class PhysiCellXMLCreator(QWidget):
         sample_file = Path("data", name + ".xml")
         copy_file = "copy_" + name + ".xml"
         try:
-            print("------------- copying ",sample_file," to ",copy_file)
+            print("celltypes3_cb():------------- copying ",sample_file," to ",copy_file)
             shutil.copy(sample_file, copy_file)
         except:
-            print("Unable to copy file.")
+            print("celltypes3_cb(): Unable to copy file(1).")
+            sys.exit(1)
 
         try:
-            print("------------- copying ",sample_file," to ",config_file)
+            print("celltypes3_cb():------------- copying ",sample_file," to config.xml")
             shutil.copy(sample_file, "config.xml")
         except:
-            print("Unable to copy file.")
+            print("celltypes3_cb(): Unable to copy file(2).")
+            sys.exit(1)
 
         self.add_new_model(copy_file, True)
         self.config_file = copy_file
