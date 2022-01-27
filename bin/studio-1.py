@@ -555,8 +555,8 @@ class PhysiCellXMLCreator(QWidget):
         except:
             print("Unable to copy file.")
 
-        self.add_new_model(copy_file, True)
         self.config_file = copy_file
+        self.add_new_model(copy_file, True)
         print("celltypes3_cb:   self.config_file = ",self.config_file)
 
         self.show_sample_model()

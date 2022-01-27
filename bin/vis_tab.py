@@ -14,6 +14,7 @@ from matplotlib.collections import PatchCollection
 import matplotlib.colors as mplc
 from matplotlib import gridspec
 from collections import deque
+import glob
 
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QFrame,QApplication,QWidget,QTabWidget,QFormLayout,QLineEdit, QHBoxLayout,QVBoxLayout,QRadioButton,QLabel,QCheckBox,QComboBox,QScrollArea,  QMainWindow,QGridLayout, QPushButton, QFileDialog, QMessageBox
@@ -156,6 +157,10 @@ class Vis(QWidget):
         self.forward_button = QPushButton(">")
         self.forward_button.clicked.connect(self.forward_plot_cb)
         controls_hbox.addWidget(self.forward_button)
+
+        self.last_button = QPushButton(">>")
+        self.last_button.clicked.connect(self.last_plot_cb)
+        controls_hbox.addWidget(self.last_button)
 
         self.play_button = QPushButton("Play")
         # self.play_button.clicked.connect(self.play_plot_cb)
@@ -384,6 +389,7 @@ class Vis(QWidget):
         print('reset_model(): len(xcoords)=',len(xcoords))
         self.numx =  len(xcoords)
         self.numy =  len(xcoords)
+        print("reset_model(): self.numx, numy = ",self.numx,self.numy)
 
         #-------------------
         vars_uep = xml_root.find(".//microenvironment//domain//variables")
@@ -454,6 +460,34 @@ class Vis(QWidget):
             self.reset_model_flag = False
 
         self.current_svg_frame = 0
+        self.update_plots()
+
+    def last_plot_cb(self, text):
+        if self.reset_model_flag:
+            self.reset_model()
+            self.reset_model_flag = False
+
+        print('cwd = ',os.getcwd())
+        print('self.output_dir = ',self.output_dir)
+        # xml_file = Path(self.output_dir, "initial.xml")
+        # xml_files = glob.glob('tmpdir/output*.xml')
+        xml_files = glob.glob('output*.xml')
+        if len(xml_files) == 0:
+            return
+        xml_files.sort()
+        svg_files = glob.glob('snapshot*.svg')
+        svg_files.sort()
+        print('xml_files = ',xml_files)
+        num_xml = len(xml_files)
+        print('svg_files = ',svg_files)
+        num_svg = len(svg_files)
+        print('num_xml, num_svg = ',num_xml, num_svg)
+        last_xml = int(xml_files[-1][-12:-4])
+        last_svg = int(svg_files[-1][-12:-4])
+        print('last_xml, _svg = ',last_xml,last_svg)
+        self.current_svg_frame = last_xml
+        if last_svg < last_xml:
+            self.current_svg_frame = last_svg
         self.update_plots()
 
     def back_plot_cb(self, text):
@@ -950,8 +984,8 @@ class Vis(QWidget):
         # numy = numx
         # self.numx = 50  # for template model
         # self.numy = 50
-        self.numx = 88  # for kidney model
-        self.numy = 75
+        # self.numx = 88  # for kidney model
+        # self.numy = 75
         print("self.numx, self.numy = ",self.numx, self.numy )
         # nxny = numx * numy
 

@@ -142,6 +142,7 @@ class RunModel(QWidget):
             self.microenv_tab.fill_xml()
             self.celldef_tab.fill_xml()
             self.user_params_tab.fill_xml()
+            print("\n\n ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
             print("run_tab.py: ----> writing modified model to ",new_config_file)
             self.tree.write(new_config_file)  # saves modified XML to tmpdir/config.xml 
 
