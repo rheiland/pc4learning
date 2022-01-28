@@ -70,7 +70,9 @@ class PhysiCellXMLCreator(QWidget):
         # self.setMinimumSize(800, 660)  # width, height (height >= Cell Types|Death params)
         # self.setMinimumSize(800, 800)  # width, height (height >= Cell Types|Death params)
 
-        self.setMinimumSize(700, 770)  # width, height (height >= Cell Types|Death params)
+        # self.setMinimumSize(700, 770)  # width, height (height >= Cell Types|Death params)
+
+        self.setMinimumSize(850, 770)  # width, height (height >= Cell Types|Death params)
         # self.setMinimumSize(1200, 770)  # width, height (height >= Cell Types|Death params)
         # self.setMinimumSize(600, 600)  # width, height (height >= Cell Types|Death params)
         # self.resize(400, 790)  # width, height (height >= Cell Types|Death params)

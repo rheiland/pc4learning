@@ -39,6 +39,8 @@ class Vis(QWidget):
 
         self.nanohub_flag = nanohub_flag
 
+        self.animating_flag = False
+
         self.xml_root = None
         self.current_svg_frame = 0
         self.timer = QtCore.QTimer()
@@ -163,6 +165,7 @@ class Vis(QWidget):
         controls_hbox.addWidget(self.last_button)
 
         self.play_button = QPushButton("Play")
+        self.play_button.setStyleSheet("background-color : lightgreen")
         # self.play_button.clicked.connect(self.play_plot_cb)
         self.play_button.clicked.connect(self.animate)
         controls_hbox.addWidget(self.play_button)
@@ -517,6 +520,7 @@ class Vis(QWidget):
     # def task(self):
             # self.dc.update_figure()
 
+    # used by animate
     def play_plot_cb(self):
         for idx in range(1):
             self.current_svg_frame += 1
@@ -550,17 +554,25 @@ class Vis(QWidget):
         self.update_plots()
 
 
-    def animate(self, text):
-        if self.reset_model_flag:
-            self.reset_model()
-            self.reset_model_flag = False
+    def animate(self):
+        if not self.animating_flag:
+            self.animating_flag = True
+            self.play_button.setText("Halt")
+            self.play_button.setStyleSheet("background-color : red")
 
-        self.current_svg_frame = 0
-        # self.timer = QtCore.QTimer()
-        # self.timer.timeout.connect(self.play_plot_cb)
-        # self.timer.start(2000)  # every 2 sec
-        # self.timer.start(100)
-        self.timer.start(1)
+            if self.reset_model_flag:
+                self.reset_model()
+                self.reset_model_flag = False
+
+            # self.current_svg_frame = 0
+            self.timer.start(1)
+
+        else:
+            self.animating_flag = False
+            self.play_button.setText("Play")
+            self.play_button.setStyleSheet("background-color : lightgreen")
+            self.timer.stop()
+
 
     # def play_plot_cb0(self, text):
     #     for idx in range(10):
