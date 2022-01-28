@@ -571,7 +571,10 @@ class PhysiCellXMLCreator(QWidget):
         print("biorobots_cb:   self.config_file = ",self.config_file)
 
         self.show_sample_model()
-        self.run_tab.exec_name.setText('../biorobots')
+        if self.nanohub_flag:
+            self.run_tab.exec_name.setText('biorobots')
+        else:
+            self.run_tab.exec_name.setText('../biorobots')
 
 
     def celltypes3_cb(self):
@@ -600,7 +603,10 @@ class PhysiCellXMLCreator(QWidget):
         print("celltypes3_cb:   self.config_file = ",self.config_file)
 
         self.show_sample_model()
-        self.run_tab.exec_name.setText('../celltypes3')
+        if self.nanohub_flag:
+            self.run_tab.exec_name.setText('celltypes3')
+        else:
+            self.run_tab.exec_name.setText('../celltypes3')
 
 def main():
     inputfile = ''
