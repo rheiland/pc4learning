@@ -3123,7 +3123,7 @@ class CellDef(QWidget):
 
     # @QtCore.Slot()
     def secretion_substrate_changed_cb(self, idx):
-        # print('------ secretion_substrate_changed_cb(): idx = ',idx)
+        print('------ secretion_substrate_changed_cb(): idx = ',idx)
         self.current_secretion_substrate = self.secretion_substrate_dropdown.currentText()
         # print("    self.current_secretion_substrate = ",self.current_secretion_substrate)
         if idx == -1:
@@ -3812,10 +3812,18 @@ class CellDef(QWidget):
     #-----------------------------------------------------------------------------------------
     def update_secretion_params(self):
         cdname = self.current_cell_def
+
+        print("update_secretion_params(): cdname = ",cdname)
+        print("update_secretion_params(): self.current_secretion_substrate = ",self.current_secretion_substrate)
+        print(self.param_d[cdname]["secretion"])
+
         self.secretion_rate.setText(self.param_d[cdname]["secretion"][self.current_secretion_substrate]["secretion_rate"])
         self.secretion_target.setText(self.param_d[cdname]["secretion"][self.current_secretion_substrate]["secretion_target"])
         self.uptake_rate.setText(self.param_d[cdname]["secretion"][self.current_secretion_substrate]["uptake_rate"])
         self.secretion_net_export_rate.setText(self.param_d[cdname]["secretion"][self.current_secretion_substrate]["net_export_rate"])
+
+        # rwh: also update the combobox to select the substrate
+
 
     #-----------------------------------------------------------------------------------------
     def clear_custom_data_params(self):
