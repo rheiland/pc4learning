@@ -30,10 +30,12 @@ from run_tab import RunModel
 from vis_tab import Vis 
 
 class QHLine(QFrame):
-    def __init__(self):
+    def __init__(self, sunken_flag):
         super(QHLine, self).__init__()
         self.setFrameShape(QFrame.HLine)
-        self.setFrameShadow(QFrame.Sunken)
+        self.setFrameStyle(QFrame.NoFrame)
+        if sunken_flag:
+            self.setFrameShadow(QFrame.Sunken)
 
 def SingleBrowse(self):
         # if len(self.csv) < 2:
@@ -61,29 +63,22 @@ class PhysiCellXMLCreator(QWidget):
 
         # Menus
         vlayout = QVBoxLayout(self)
-        # vlayout.setContentsMargins(5, 35, 5, 5)
+        # vlayout.setContentsMargins(5, 35, 5, 5)  # left,top,right,bottom
+        vlayout.setContentsMargins(-1, 10, -1, -1)
         # if not self.nanohub_flag:
         if True:
             menuWidget = QWidget(self.menu())
             vlayout.addWidget(menuWidget)
-            vlayout.addWidget(QHLine())
+            vlayout.addWidget(QHLine(False))
         # self.setWindowIcon(self.style().standardIcon(getattr(QStyle, 'SP_DialogNoButton')))
         # self.setWindowIcon(QtGui.QIcon('physicell_logo_25pct.png'))
         # self.grid = QGridLayout()
         # lay.addLayout(self.grid)
         self.setLayout(vlayout)
-        # self.setMinimumSize(400, 790)  # width, height (height >= Cell Types|Death params)
-        # self.setMinimumSize(400, 500)  # width, height (height >= Cell Types|Death params)
-        # self.setMinimumSize(800, 620)  # width, height (height >= Cell Types|Death params)
-        # self.setMinimumSize(800, 660)  # width, height (height >= Cell Types|Death params)
-        # self.setMinimumSize(800, 800)  # width, height (height >= Cell Types|Death params)
 
-        # self.setMinimumSize(700, 770)  # width, height (height >= Cell Types|Death params)
-
-        self.setMinimumSize(850, 770)  # width, height (height >= Cell Types|Death params)
+        self.resize(950, 770)  # width, height (height >= Cell Types|Death params)
+        self.setMinimumSize(750, 770)  # width, height (height >= Cell Types|Death params)
         # self.setMinimumSize(1200, 770)  # width, height (height >= Cell Types|Death params)
-        # self.setMinimumSize(600, 600)  # width, height (height >= Cell Types|Death params)
-        # self.resize(400, 790)  # width, height (height >= Cell Types|Death params)
 
         # self.menubar = QtWidgets.QMenuBar(self)
         # self.file_menu = QtWidgets.QMenu('File')

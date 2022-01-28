@@ -534,9 +534,12 @@ class Vis(QWidget):
             # print("-- plot_svg:", full_fname) 
             if not os.path.isfile(full_fname):
                 # print("Once output files are generated, click the slider.")   
-                print("ERROR:  filename not found.")
-                self.timer.stop()
-                self.current_svg_frame -= 1
+                print("play_plot_cb():  Reached the end (or no output files found).")
+                # self.timer.stop()
+                # self.current_svg_frame -= 1
+                self.animating_flag = True
+                self.current_svg_frame = 0
+                self.animate()
                 return
 
             self.update_plots()
