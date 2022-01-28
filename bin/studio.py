@@ -110,14 +110,15 @@ class PhysiCellXMLCreator(QWidget):
         binDirectory = os.path.dirname(os.path.abspath(__file__))
         dataDirectory = os.path.join(binDirectory,'..','data')
         print("-------- dataDirectory (relative) =",dataDirectory)
-        absolute_data_dir = os.path.abspath(dataDirectory)
-        print("-------- absolute_data_dir =",absolute_data_dir)
-        os.environ['KIDNEY_DATA_PATH'] = absolute_data_dir
+        self.absolute_data_dir = os.path.abspath(dataDirectory)
+        print("-------- absolute_data_dir =",self.absolute_data_dir)
+        os.environ['KIDNEY_DATA_PATH'] = self.absolute_data_dir
         # dataDirectory = os.path.join(binDirectory,'..','config')
         # dataDirectory = os.path.join('.','config')
 
         # read_file = model_name + ".xml"
-        read_file = os.path.join(dataDirectory, model_name + ".xml")
+        # read_file = os.path.join(dataDirectory, model_name + ".xml")
+        read_file = os.path.join(self.absolute_data_dir, model_name + ".xml")
         # self.setWindowTitle(self.title_prefix + model_name)
 
 
@@ -540,13 +541,35 @@ class PhysiCellXMLCreator(QWidget):
         print("\n\n\n================ copy/load sample ======================================")
         os.chdir(self.homedir)
         name = "biorobots_flat"
-        sample_file = Path("data", name + ".xml")
+        # sample_file = Path("data", name + ".xml")
+        sample_file = Path(self.absolute_data_dir, name + ".xml")
         copy_file = "copy_" + name + ".xml"
         shutil.copy(sample_file, copy_file)
 
-        self.add_new_model(copy_file, True)
+        # self.add_new_model(copy_file, True)
         # self.config_file = "config_samples/" + name + ".xml"
         self.config_file = copy_file
+        # self.show_sample_model()
+        # self.run_tab.exec_name.setText('../biorobots')
+
+        try:
+            print("biorobots_cb():------------- copying ",sample_file," to ",copy_file)
+            shutil.copy(sample_file, copy_file)
+        except:
+            print("biorobots_cb(): Unable to copy file(1).")
+            sys.exit(1)
+
+        try:
+            print("biorobots_cb():------------- copying ",sample_file," to config.xml")
+            shutil.copy(sample_file, "config.xml")
+        except:
+            print("biorobots_cb(): Unable to copy file(2).")
+            sys.exit(1)
+
+        self.add_new_model(copy_file, True)
+        self.config_file = copy_file
+        print("biorobots_cb:   self.config_file = ",self.config_file)
+
         self.show_sample_model()
         self.run_tab.exec_name.setText('../biorobots')
 
@@ -555,7 +578,8 @@ class PhysiCellXMLCreator(QWidget):
         print("\n\n\n================ copy/load sample ======================================")
         os.chdir(self.homedir)
         name = "celltypes3_flat"
-        sample_file = Path("data", name + ".xml")
+        # sample_file = Path("data", name + ".xml")
+        sample_file = Path(self.absolute_data_dir, name + ".xml")
         copy_file = "copy_" + name + ".xml"
         try:
             print("celltypes3_cb():------------- copying ",sample_file," to ",copy_file)
