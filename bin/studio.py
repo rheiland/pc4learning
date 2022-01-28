@@ -29,6 +29,12 @@ from user_params_tab import UserParams
 from run_tab import RunModel 
 from vis_tab import Vis 
 
+class QHLine(QFrame):
+    def __init__(self):
+        super(QHLine, self).__init__()
+        self.setFrameShape(QFrame.HLine)
+        self.setFrameShadow(QFrame.Sunken)
+
 def SingleBrowse(self):
         # if len(self.csv) < 2:
     filePath = QFileDialog.getOpenFileName(self,'',".",'*.xml')
@@ -56,9 +62,11 @@ class PhysiCellXMLCreator(QWidget):
         # Menus
         vlayout = QVBoxLayout(self)
         # vlayout.setContentsMargins(5, 35, 5, 5)
-        if not self.nanohub_flag:
+        # if not self.nanohub_flag:
+        if True:
             menuWidget = QWidget(self.menu())
             vlayout.addWidget(menuWidget)
+            vlayout.addWidget(QHLine())
         # self.setWindowIcon(self.style().standardIcon(getattr(QStyle, 'SP_DialogNoButton')))
         # self.setWindowIcon(QtGui.QIcon('physicell_logo_25pct.png'))
         # self.grid = QGridLayout()
