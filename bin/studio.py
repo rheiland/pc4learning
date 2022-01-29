@@ -152,8 +152,8 @@ class PhysiCellXMLCreator(QWidget):
 
         # self.template_cb()
 
-        self.num_models = 0
-        self.model = {}  # key: name, value:[read-only, tree]
+        # self.num_models = 0
+        # self.model = {}  # key: name, value:[read-only, tree]
 
         self.config_tab = Config(self.nanohub_flag)
         self.config_tab.xml_root = self.xml_root
@@ -233,6 +233,7 @@ class PhysiCellXMLCreator(QWidget):
             print("studio.py: calling vis_tab.substrates_cbox_changed_cb(2)")
             self.vis_tab.fill_substrates_combobox(self.celldef_tab.substrate_list)
             # self.vis_tab.substrates_cbox_changed_cb(2)   # doesn't accomplish it; need to set index, but not sure when
+            self.vis_tab.init_plot_range(self.config_tab)
 
         vlayout.addWidget(tabWidget)
         # self.addTab(self.sbml_tab,"SBML")
@@ -437,6 +438,9 @@ class PhysiCellXMLCreator(QWidget):
         self.user_params_tab.clear_gui()
         self.user_params_tab.fill_gui()
 
+        self.vis_tab.init_plot_range(self.config_tab)
+
+
     def show_sample_model(self):
         print("studio.py: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~show_sample_model(): self.config_file = ", self.config_file)
         # self.config_file = "config_samples/biorobots.xml"
@@ -581,8 +585,10 @@ class PhysiCellXMLCreator(QWidget):
         print("\n\n\n================ copy/load sample ======================================")
         os.chdir(self.homedir)
         name = "celltypes3_flat"
+        name = "celltypes3_flat-with-default-celldef.xml"
         # sample_file = Path("data", name + ".xml")
-        sample_file = Path(self.absolute_data_dir, name + ".xml")
+        # sample_file = Path(self.absolute_data_dir, name + ".xml")
+        sample_file = Path(self.absolute_data_dir,  name)
         copy_file = "copy_" + name + ".xml"
         try:
             print("celltypes3_cb():------------- copying ",sample_file," to ",copy_file)

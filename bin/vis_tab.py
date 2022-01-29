@@ -62,7 +62,7 @@ class Vis(QWidget):
         self.use_defaults = True
         self.title_str = ""
 
-        self.config_file = "mymodel.xml"
+        # self.config_file = "mymodel.xml"
         self.reset_model_flag = True
         self.xmin = -80
         self.xmax = 80
@@ -295,9 +295,21 @@ class Vis(QWidget):
         self.update_plots()
 
 
+    def init_plot_range(self, config_tab):
+        print("----- init_plot_range:")
+        try:
+            # beware of widget callback 
+            self.my_xmin.setText(config_tab.xmin.text())
+            self.my_xmax.setText(config_tab.xmax.text())
+            self.my_ymin.setText(config_tab.ymin.text())
+            self.my_ymax.setText(config_tab.ymax.text())
+        except:
+            pass
+
     def change_plot_range(self):
         print("----- change_plot_range:")
-        print("----- my_xmin= ",self.my_xmin.text())
+        # print("----- my_xmin= ",self.my_xmin.text())
+        # print("----- my_xmax= ",self.my_xmax.text())
         try:  # due to the initial callback
             self.plot_xmin = float(self.my_xmin.text())
             self.plot_xmax = float(self.my_xmax.text())
