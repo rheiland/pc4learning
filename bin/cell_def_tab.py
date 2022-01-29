@@ -5261,7 +5261,7 @@ class CellDef(QWidget):
             if self.param_d[cdname]["necrosis_phase1_fixed"]:
                 bval = "true"
             subelm2 = ET.SubElement(subelm, "duration",{"index":"1", "fixed_duration":bval})
-            subelm2.text = self.param_d[cdname]["necrosis_phase0_duration"]
+            subelm2.text = self.param_d[cdname]["necrosis_phase1_duration"]
             subelm2.tail = self.indent14
         else:   # transition rate
             # 	<phase_transition_rates units="1/min">
