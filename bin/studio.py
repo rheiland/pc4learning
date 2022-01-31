@@ -261,6 +261,7 @@ class PhysiCellXMLCreator(QWidget):
         # file_menu.addAction("New (template)", self.new_model_cb, QtGui.QKeySequence('Ctrl+n'))
         file_menu.addAction("biorobots", self.biorobots_cb)
         file_menu.addAction("celltypes3", self.celltypes3_cb)
+        file_menu.addAction("pred_prey_farmer", self.pred_prey_cb)
         file_menu.addAction("Save as mymodel.xml", self.save_as_cb)
 
         #--------------
@@ -612,6 +613,38 @@ class PhysiCellXMLCreator(QWidget):
             self.run_tab.exec_name.setText('celltypes3')
         else:
             self.run_tab.exec_name.setText('../celltypes3')
+
+
+    def pred_prey_cb(self):
+        os.chdir(self.homedir)
+        name = "pred_prey_flat"
+        # sample_file = Path("data", name + ".xml")
+        sample_file = Path(self.absolute_data_dir, name + ".xml")
+        copy_file = "copy_" + name + ".xml"
+        try:
+            print("pred_prey_cb():------------- copying ",sample_file," to ",copy_file)
+            shutil.copy(sample_file, copy_file)
+        except:
+            print("pred_prey_cb(): Unable to copy file(1).")
+            sys.exit(1)
+
+        try:
+            print("pred_prey_cb():------------- copying ",sample_file," to config.xml")
+            shutil.copy(sample_file, "config.xml")
+        except:
+            print("pred_prey_cb(): Unable to copy file(2).")
+            sys.exit(1)
+
+        self.add_new_model(copy_file, True)
+        self.config_file = copy_file
+        print("pred_prey_cb:   self.config_file = ",self.config_file)
+
+        self.show_sample_model()
+        if self.nanohub_flag:
+            self.run_tab.exec_name.setText('pred_prey')
+        else:
+            self.run_tab.exec_name.setText('../pred_prey')
+
 
 def main():
     inputfile = ''

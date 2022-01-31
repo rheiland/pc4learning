@@ -1,6 +1,7 @@
 VERSION := $(shell grep . VERSION.txt | cut -f1 -d:)
 PROGRAM_NAME1:= biorobots
 PROGRAM_NAME2:= celltypes3
+PROGRAM_NAME3:= pred_prey
 
 osRelease = $(shell lsb_release -r | sed -e "s/Release:\W*//" -e "s/\..*//")
 ifeq ($(osRelease),7)
@@ -86,8 +87,9 @@ PhysiCell_pugixml.o PhysiCell_settings.o PhysiCell_geometry.o
 
 # put your custom objects here (they should be in the custom_modules directory)
 
-biorobots_custom_module_OBJECTS := custom_biorobots.o 
-celltypes3_custom_module_OBJECTS := custom_celltypes3.o 
+# biorobots_custom_module_OBJECTS := custom_biorobots.o 
+# celltypes3_custom_module_OBJECTS := custom_celltypes3.o 
+# pred_prey_custom_module_OBJECTS := pred_prey_farmer.o 
 
 pugixml_OBJECTS := pugixml.o
 
@@ -96,12 +98,14 @@ PhysiCell_OBJECTS := $(BioFVM_OBJECTS)  $(pugixml_OBJECTS) $(PhysiCell_core_OBJE
 #ALL_OBJECTS2 := $(PhysiCell_OBJECTS) $(celltypes3_custom_module_OBJECTS)
 ALL_OBJECTS1 := $(PhysiCell_OBJECTS) biorobots.o
 ALL_OBJECTS2 := $(PhysiCell_OBJECTS) celltypes3.o
+ALL_OBJECTS3 := $(PhysiCell_OBJECTS) pred_prey_farmer.o
 
 # compile the project 
 
-all: main-biorobots.cpp $(ALL_OBJECTS1) $(ALL_OBJECTS2)
+all: main-biorobots.cpp $(ALL_OBJECTS1) $(ALL_OBJECTS2) $(ALL_OBJECTS3)
 	$(COMPILE_COMMAND) -o $(PROGRAM_NAME1) $(ALL_OBJECTS1) main-biorobots.cpp 
 	$(COMPILE_COMMAND) -o $(PROGRAM_NAME2) $(ALL_OBJECTS2) main-celltypes3.cpp 
+	$(COMPILE_COMMAND) -o $(PROGRAM_NAME3) $(ALL_OBJECTS3) main-pred-prey-farmer.cpp 
 
 # PhysiCell core components	
 
@@ -193,17 +197,21 @@ biorobots.o: ./custom_modules/biorobots.cpp
 	$(COMPILE_COMMAND) -c ./custom_modules/biorobots.cpp
 celltypes3.o: ./custom_modules/celltypes3.cpp 
 	$(COMPILE_COMMAND) -c ./custom_modules/celltypes3.cpp
+pred_prey_farmer.o: ./custom_modules/pred_prey_farmer.cpp 
+	$(COMPILE_COMMAND) -c ./custom_modules/pred_prey_farmer.cpp
 
 	
-# next 2 targets for nanoHUB
+# next targets for nanoHUB
 install: 
 	$(MODINIT); $(MODCMD); make all
 	install --mode 0755 -D $(PROGRAM_NAME1) $(BIN)/$(PROGRAM_NAME1)
 	install --mode 0755 -D $(PROGRAM_NAME2) $(BIN)/$(PROGRAM_NAME2)
+	install --mode 0755 -D $(PROGRAM_NAME3) $(BIN)/$(PROGRAM_NAME3)
 
 distclean: clean
 	rm -f $(BIN)/$(PROGRAM_NAME1)
 	rm -f $(BIN)/$(PROGRAM_NAME2)
+	rm -f $(BIN)/$(PROGRAM_NAME3)
 	rm -rf $(BIN)/__pycache__
 	rm -rf ../.ipynb_checkpoints
 
@@ -211,6 +219,7 @@ clean:
 	rm -f *.o
 	rm -f $(PROGRAM_NAME1)
 	rm -f $(PROGRAM_NAME2)
+	rm -f $(PROGRAM_NAME3)
 	
 data-cleanup:
 	rm -rf ./output
