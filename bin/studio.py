@@ -584,11 +584,10 @@ class PhysiCellXMLCreator(QWidget):
     def celltypes3_cb(self):
         print("\n\n\n================ copy/load sample ======================================")
         os.chdir(self.homedir)
+        # name = "celltypes3_flat-with-default-celldef"
         name = "celltypes3_flat"
-        name = "celltypes3_flat-with-default-celldef.xml"
         # sample_file = Path("data", name + ".xml")
-        # sample_file = Path(self.absolute_data_dir, name + ".xml")
-        sample_file = Path(self.absolute_data_dir,  name)
+        sample_file = Path(self.absolute_data_dir, name + ".xml")
         copy_file = "copy_" + name + ".xml"
         try:
             print("celltypes3_cb():------------- copying ",sample_file," to ",copy_file)

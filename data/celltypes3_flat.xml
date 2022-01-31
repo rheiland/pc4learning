@@ -58,6 +58,14 @@
         </physical_parameter_set>
         <initial_condition units="none">1</initial_condition>
         <Dirichlet_boundary_condition units="none" enabled="true">1</Dirichlet_boundary_condition>
+        <Dirichlet_options>
+          <boundary_value ID="xmin" enabled="true">1</boundary_value>
+          <boundary_value ID="xmax" enabled="true">1</boundary_value>
+          <boundary_value ID="ymin" enabled="true">1</boundary_value>
+          <boundary_value ID="ymax" enabled="true">1</boundary_value>
+          <boundary_value ID="zmin" enabled="true">1</boundary_value>
+          <boundary_value ID="zmax" enabled="true">1</boundary_value>
+        </Dirichlet_options>
  
 
     </variable>
@@ -69,6 +77,14 @@
         </physical_parameter_set>
         <initial_condition units="none">0</initial_condition>
         <Dirichlet_boundary_condition units="none" enabled="true">0</Dirichlet_boundary_condition>
+        <Dirichlet_options>
+          <boundary_value ID="xmin" enabled="true">0</boundary_value>
+          <boundary_value ID="xmax" enabled="true">0</boundary_value>
+          <boundary_value ID="ymin" enabled="true">0</boundary_value>
+          <boundary_value ID="ymax" enabled="true">0</boundary_value>
+          <boundary_value ID="zmin" enabled="true">0</boundary_value>
+          <boundary_value ID="zmax" enabled="true">0</boundary_value>
+        </Dirichlet_options>
  
 
     </variable>
@@ -80,6 +96,14 @@
         </physical_parameter_set>
         <initial_condition units="none">0</initial_condition>
         <Dirichlet_boundary_condition units="none" enabled="true">0</Dirichlet_boundary_condition>
+        <Dirichlet_options>
+          <boundary_value ID="xmin" enabled="true">0</boundary_value>
+          <boundary_value ID="xmax" enabled="true">0</boundary_value>
+          <boundary_value ID="ymin" enabled="true">0</boundary_value>
+          <boundary_value ID="ymax" enabled="true">0</boundary_value>
+          <boundary_value ID="zmin" enabled="true">0</boundary_value>
+          <boundary_value ID="zmax" enabled="true">0</boundary_value>
+        </Dirichlet_options>
  
 
     </variable>
@@ -91,6 +115,14 @@
         </physical_parameter_set>
         <initial_condition units="none">0</initial_condition>
         <Dirichlet_boundary_condition units="none" enabled="true">0</Dirichlet_boundary_condition>
+        <Dirichlet_options>
+          <boundary_value ID="xmin" enabled="true">0</boundary_value>
+          <boundary_value ID="xmax" enabled="true">0</boundary_value>
+          <boundary_value ID="ymin" enabled="true">0</boundary_value>
+          <boundary_value ID="ymax" enabled="true">0</boundary_value>
+          <boundary_value ID="zmin" enabled="true">0</boundary_value>
+          <boundary_value ID="zmax" enabled="true">0</boundary_value>
+        </Dirichlet_options>
  
 
     </variable>
