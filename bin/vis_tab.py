@@ -1012,6 +1012,7 @@ class Vis(QWidget):
             # self.circles(xvals,yvals, s=rvals, color=rgbas, alpha=self.alpha)
             self.circles(xvals,yvals, s=rvals, color=rgbas)
 
+        self.ax0.set_aspect(1.0)
 
     #------------------------------------------------------------
     def plot_substrate(self, frame):
