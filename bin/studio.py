@@ -578,7 +578,7 @@ class PhysiCellXMLCreator(QWidget):
 
         self.show_sample_model()
         if self.nanohub_flag:
-            self.run_tab.exec_name.setText('submit --local biorobots')
+            self.run_tab.exec_name.setText('biorobots')
         else:
             self.run_tab.exec_name.setText('../biorobots')
         self.vis_tab.show_edge = False
@@ -613,7 +613,7 @@ class PhysiCellXMLCreator(QWidget):
 
         self.show_sample_model()
         if self.nanohub_flag:
-            self.run_tab.exec_name.setText('submit --local celltypes3')
+            self.run_tab.exec_name.setText('celltypes3')
         else:
             self.run_tab.exec_name.setText('../celltypes3')
         self.vis_tab.show_edge = True
@@ -646,7 +646,7 @@ class PhysiCellXMLCreator(QWidget):
 
         self.show_sample_model()
         if self.nanohub_flag:
-            self.run_tab.exec_name.setText('submit --local pred_prey')
+            self.run_tab.exec_name.setText('pred_prey')
         else:
             self.run_tab.exec_name.setText('../pred_prey')
         self.vis_tab.show_edge = True

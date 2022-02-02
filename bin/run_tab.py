@@ -78,7 +78,7 @@ class RunModel(QWidget):
         hbox.addWidget(QLabel("Exec:"))
         self.exec_name = QLineEdit()
         if self.nanohub_flag:
-            self.exec_name.setText('submit --local biorobots')
+            self.exec_name.setText('biorobots')
         else:
             self.exec_name.setText('../biorobots')
         # self.exec_name.setEnabled(False)
@@ -192,7 +192,8 @@ class RunModel(QWidget):
             exec_str = self.exec_name.text()
             xml_str = self.config_xml_name.text()
             print("run_tab.py: running: ",exec_str,xml_str)
-            self.p.start(exec_str, [xml_str])
+            # self.p.start(exec_str, [xml_str])
+            self.p.start("submit",["--local",exec_str,xml_str])
             # self.p = None  # No, don't do this
         else:
             print("self.p is not None???")
