@@ -55,7 +55,8 @@ class Vis(QWidget):
         self.num_contours = 15
         self.num_contours = 25
         self.num_contours = 50
-        self.fontsize = 5
+        self.fontsize = 9
+        self.title_fontsize = 10
 
         self.plot_svg_flag = True
         # self.plot_svg_flag = False
@@ -398,6 +399,7 @@ class Vis(QWidget):
         self.ymin = float(bds[1])
         self.ymax = float(bds[4])
         self.y_range = self.ymax - self.ymin
+        print('reset_model(): self.ymin, ymax=',self.ymin, self.ymax)
         self.plot_ymin = self.ymin
         self.plot_ymax = self.ymax
 
@@ -406,7 +408,12 @@ class Vis(QWidget):
         print('reset_model(): xcoords=',xcoords)
         print('reset_model(): len(xcoords)=',len(xcoords))
         self.numx =  len(xcoords)
-        self.numy =  len(xcoords)
+
+        ycoords_str = xml_root.find(".//microenvironment//domain//mesh//y_coordinates").text
+        ycoords = ycoords_str.split()
+        print('reset_model(): ycoords=',ycoords)
+        print('reset_model(): len(ycoords)=',len(ycoords))
+        self.numy =  len(ycoords)
         print("reset_model(): self.numx, numy = ",self.numx,self.numy)
 
         #-------------------
@@ -946,7 +953,7 @@ class Vis(QWidget):
             # days = int(hrs/24)
             # title_str = '%dd, %dh, %dm' % (int(days),(hrs%24), mins - (hrs*60))
         # plt.title(self.title_str)
-        self.ax0.set_title(self.title_str, fontsize=10)
+        self.ax0.set_title(self.title_str, fontsize=self.title_fontsize)
         # self.ax0.set_title(self.title_str, prop={'size':'small'})
 
         # plt.xlim(self.xmin, self.xmax)
@@ -958,7 +965,7 @@ class Vis(QWidget):
 
         self.ax0.set_ylim(self.plot_ymin, self.plot_ymax)
         # self.ax0.set_ylim(0.0, self.ymax)
-        self.ax0.tick_params(labelsize=4)
+        self.ax0.tick_params(labelsize=self.fontsize)
 
         self.ax0.set_facecolor(self.bgcolor)
 
@@ -1117,7 +1124,7 @@ class Vis(QWidget):
         #         contour_ok = False
         #         print('---------got error on contourf 2.')
 
-        self.ax0.set_title(self.title_str, fontsize=self.fontsize)
+        self.ax0.set_title(self.title_str, fontsize=self.title_fontsize)
 
         # if (contour_ok):
         # if (True):
@@ -1137,5 +1144,6 @@ class Vis(QWidget):
         # ratio_default = (self.plot_xmax - self.plot_xmin) / (self.plot_ymax - self.plot_ymin)
         # print("ratio_default = ",ratio_default)
         # self.ax0.set_aspect(ratio_default * self.aspect_ratio)
+        self.ax0.set_aspect(1.0)
 
         # self.ax0.set_aspect(self.plot_ymin, self.plot_ymax)
