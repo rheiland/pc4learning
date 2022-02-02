@@ -234,6 +234,7 @@ class PhysiCellXMLCreator(QWidget):
             self.vis_tab.fill_substrates_combobox(self.celldef_tab.substrate_list)
             # self.vis_tab.substrates_cbox_changed_cb(2)   # doesn't accomplish it; need to set index, but not sure when
             self.vis_tab.init_plot_range(self.config_tab)
+            self.vis_tab.show_edge = False
 
         vlayout.addWidget(tabWidget)
         # self.addTab(self.sbml_tab,"SBML")
@@ -577,9 +578,11 @@ class PhysiCellXMLCreator(QWidget):
 
         self.show_sample_model()
         if self.nanohub_flag:
-            self.run_tab.exec_name.setText('biorobots')
+            self.run_tab.exec_name.setText('submit --local biorobots')
         else:
             self.run_tab.exec_name.setText('../biorobots')
+        self.vis_tab.show_edge = False
+        self.vis_tab.bgcolor = [1,1,1,1]
 
 
     def celltypes3_cb(self):
@@ -610,9 +613,11 @@ class PhysiCellXMLCreator(QWidget):
 
         self.show_sample_model()
         if self.nanohub_flag:
-            self.run_tab.exec_name.setText('celltypes3')
+            self.run_tab.exec_name.setText('submit --local celltypes3')
         else:
             self.run_tab.exec_name.setText('../celltypes3')
+        self.vis_tab.show_edge = True
+        self.vis_tab.bgcolor = [0,0,0,1]
 
 
     def pred_prey_cb(self):
@@ -641,9 +646,11 @@ class PhysiCellXMLCreator(QWidget):
 
         self.show_sample_model()
         if self.nanohub_flag:
-            self.run_tab.exec_name.setText('pred_prey')
+            self.run_tab.exec_name.setText('submit --local pred_prey')
         else:
             self.run_tab.exec_name.setText('../pred_prey')
+        self.vis_tab.show_edge = True
+        self.vis_tab.bgcolor = [1,1,1,1]
 
 
 def main():

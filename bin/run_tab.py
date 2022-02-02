@@ -8,6 +8,7 @@ Dr. Paul Macklin (macklinp@iu.edu)
 
 import sys
 import os
+import time
 from pathlib import Path
 from PyQt5 import QtCore, QtGui
 # from PyQt5.QtWidgets import *
@@ -77,7 +78,7 @@ class RunModel(QWidget):
         hbox.addWidget(QLabel("Exec:"))
         self.exec_name = QLineEdit()
         if self.nanohub_flag:
-            self.exec_name.setText('biorobots')
+            self.exec_name.setText('submit --local biorobots')
         else:
             self.exec_name.setText('../biorobots')
         # self.exec_name.setEnabled(False)
@@ -128,6 +129,7 @@ class RunModel(QWidget):
             # remove any previous data
             # NOTE: this dir name needs to match the <folder>  in /data/<config_file.xml>
             os.system('rm -rf tmpdir*')
+            time.sleep(1)
             if os.path.isdir('tmpdir'):
                 # something on NFS causing issues...
                 tname = tempfile.mkdtemp(suffix='.bak', prefix='tmpdir_', dir='.')
