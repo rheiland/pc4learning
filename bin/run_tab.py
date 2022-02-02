@@ -191,9 +191,11 @@ class RunModel(QWidget):
             # self.p.start("mymodel", ['biobots.xml'])
             exec_str = self.exec_name.text()
             xml_str = self.config_xml_name.text()
-            print("run_tab.py: running: ",exec_str,xml_str)
-            # self.p.start(exec_str, [xml_str])
-            self.p.start("submit",["--local",exec_str,xml_str])
+            if self.nanohub_flag:
+                self.p.start("submit",["--local",exec_str,xml_str])
+            else:
+                print("run_tab.py: running: ",exec_str,xml_str)
+                self.p.start(exec_str, [xml_str])
             # self.p = None  # No, don't do this
         else:
             print("self.p is not None???")
