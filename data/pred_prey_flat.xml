@@ -64,7 +64,7 @@
 				<boundary_value ID="xmax" enabled="false">0</boundary_value>
 				<boundary_value ID="ymin" enabled="false">0</boundary_value>
 				<boundary_value ID="ymax" enabled="false">0</boundary_value>
-				<boundary_value ID="zmin" enabled="false">1</boundary_value>
+				<boundary_value ID="zmin" enabled="false">0</boundary_value>
 				<boundary_value ID="zmax" enabled="false">0</boundary_value>
 			</Dirichlet_options>
  		</variable>
@@ -78,12 +78,12 @@
 			<Dirichlet_boundary_condition units="dimensionless" enabled="true">0</Dirichlet_boundary_condition>
  
 			<Dirichlet_options>
-				<boundary_value ID="xmin" enabled="false">0</boundary_value>
-				<boundary_value ID="xmax" enabled="false">0</boundary_value>
-				<boundary_value ID="ymin" enabled="false">0</boundary_value>
-				<boundary_value ID="ymax" enabled="false">0</boundary_value>
-				<boundary_value ID="zmin" enabled="false">1</boundary_value>
-				<boundary_value ID="zmax" enabled="false">0</boundary_value>
+				<boundary_value ID="xmin" enabled="true">0</boundary_value>
+				<boundary_value ID="xmax" enabled="true">0</boundary_value>
+				<boundary_value ID="ymin" enabled="true">0</boundary_value>
+				<boundary_value ID="ymax" enabled="true">0</boundary_value>
+				<boundary_value ID="zmin" enabled="true">0</boundary_value>
+				<boundary_value ID="zmax" enabled="true">0</boundary_value>
 			</Dirichlet_options>
  		</variable>		
 
@@ -96,12 +96,12 @@
 			<Dirichlet_boundary_condition units="dimensionless" enabled="true">0</Dirichlet_boundary_condition>
  
 			<Dirichlet_options>
-				<boundary_value ID="xmin" enabled="false">0</boundary_value>
-				<boundary_value ID="xmax" enabled="false">0</boundary_value>
-				<boundary_value ID="ymin" enabled="false">0</boundary_value>
-				<boundary_value ID="ymax" enabled="false">0</boundary_value>
-				<boundary_value ID="zmin" enabled="false">1</boundary_value>
-				<boundary_value ID="zmax" enabled="false">0</boundary_value>
+				<boundary_value ID="xmin" enabled="true">0</boundary_value>
+				<boundary_value ID="xmax" enabled="true">0</boundary_value>
+				<boundary_value ID="ymin" enabled="true">0</boundary_value>
+				<boundary_value ID="ymax" enabled="true">0</boundary_value>
+				<boundary_value ID="zmin" enabled="true">0</boundary_value>
+				<boundary_value ID="zmax" enabled="true">0</boundary_value>
 			</Dirichlet_options>
  		</variable>		
 
@@ -327,7 +327,7 @@
 				
 				<secretion>
 					<substrate name="food">
-						<secretion_rate units="1/min">10</secretion_rate>
+						<secretion_rate units="1/min">0</secretion_rate>
 						<secretion_target units="substrate density">1</secretion_target>
 						<uptake_rate units="1/min">1</uptake_rate>
 						<net_export_rate units="total substrate/min">0</net_export_rate> 
@@ -341,7 +341,7 @@
 					</substrate> 
 
 					<substrate name="prey signal">
-						<secretion_rate units="1/min">0</secretion_rate>
+						<secretion_rate units="1/min">10</secretion_rate>
 						<secretion_target units="substrate density">1</secretion_target>
 						<uptake_rate units="1/min">0</uptake_rate>
 						<net_export_rate units="total substrate/min">0</net_export_rate> 
@@ -447,14 +447,14 @@
 				
 				<secretion>
 					<substrate name="food">
-						<secretion_rate units="1/min">10</secretion_rate>
+						<secretion_rate units="1/min">0</secretion_rate>
 						<secretion_target units="substrate density">1</secretion_target>
 						<uptake_rate units="1/min">0</uptake_rate>
 						<net_export_rate units="total substrate/min">0</net_export_rate> 
 					</substrate> 
 
 					<substrate name="predator signal">
-						<secretion_rate units="1/min">0</secretion_rate>
+						<secretion_rate units="1/min">10</secretion_rate>
 						<secretion_target units="substrate density">1</secretion_target>
 						<uptake_rate units="1/min">0</uptake_rate>
 						<net_export_rate units="total substrate/min">0</net_export_rate> 

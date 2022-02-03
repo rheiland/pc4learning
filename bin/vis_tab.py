@@ -502,9 +502,9 @@ class Vis(QWidget):
         xml_files.sort()
         svg_files = glob.glob('snapshot*.svg')   # rwh: problematic with celltypes3 due to snapshot_standard*.svg and snapshot<8digits>.svg
         svg_files.sort()
-        print('xml_files = ',xml_files)
+        # print('xml_files = ',xml_files)
         num_xml = len(xml_files)
-        print('svg_files = ',svg_files)
+        # print('svg_files = ',svg_files)
         num_svg = len(svg_files)
         print('num_xml, num_svg = ',num_xml, num_svg)
         last_xml = int(xml_files[-1][-12:-4])
