@@ -359,6 +359,11 @@ class Config(QWidget):
         self.zmin.setText(self.xml_root.find(".//z_min").text)
         self.zmax.setText(self.xml_root.find(".//z_max").text)
         self.zdel.setText(self.xml_root.find(".//dz").text)
+
+        if self.xml_root.find(".//virtual_wall_at_domain_edge").text.lower() == "true":
+            self.virtual_walls.setChecked(True)
+        else:
+            self.virtual_walls.setChecked(False)
         
         self.max_time.setText(self.xml_root.find(".//max_time").text)
         

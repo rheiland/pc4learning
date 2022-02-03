@@ -31,12 +31,12 @@
 		<folder>.</folder>  
 
 		<full_data>
-			<interval units="min">30</interval>
+			<interval units="min">15</interval>
 			<enable>true</enable>
 		</full_data>
 		
 		<SVG>
-			<interval units="min">30</interval>
+			<interval units="min">15</interval>
 			<enable>true</enable>
 		</SVG>
 		
@@ -241,7 +241,7 @@
 			</custom_data>
 		</cell_definition>
 		
-		<cell_definition name="prey" ID="1" parent="default">
+		<cell_definition name="prey" ID="1">
 			<phenotype>
 				<cycle code="5" name="live">  
 					<phase_transition_rates units="1/min"> 
@@ -361,7 +361,7 @@
 			</custom_data>
 		</cell_definition>
 		
-		<cell_definition name="predator" ID="2" parent="default">
+		<cell_definition name="predator" ID="2">
 			<phenotype>
 				<cycle code="5" name="live">  
 					<phase_transition_rates units="1/min"> 
