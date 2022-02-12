@@ -193,7 +193,9 @@ class PhysiCellXMLCreator(QWidget):
 
         # self.save_as_cb()
 
-        self.run_tab = RunModel(self.nanohub_flag)
+        self.tabWidget = QTabWidget()
+
+        self.run_tab = RunModel(self.nanohub_flag, self.tabWidget)
         self.homedir = os.getcwd()
         print("studio.py: self.homedir = ",self.homedir)
         self.run_tab.homedir = self.homedir
@@ -212,23 +214,27 @@ class PhysiCellXMLCreator(QWidget):
             self.run_tab.tree = self.tree
 
         #------------------
-        tabWidget = QTabWidget()
+        # self.tabWidget = QTabWidget()
         stylesheet = """
             QTabBar::tab:selected {background: orange;}   #  dodgerblue
             """
-        tabWidget.setStyleSheet(stylesheet)
-        tabWidget.addTab(self.config_tab,"Config Basics")
-        tabWidget.addTab(self.microenv_tab,"Microenvironment")
-        tabWidget.addTab(self.celldef_tab,"Cell Types")
-        # tabWidget.addTab(self.cell_customdata_tab,"Cell Custom Data")
-        tabWidget.addTab(self.user_params_tab,"User Params")
-        tabWidget.addTab(self.run_tab,"Run")
+        self.tabWidget.setStyleSheet(stylesheet)
+        self.tabWidget.addTab(self.config_tab,"Config Basics")
+        self.tabWidget.addTab(self.microenv_tab,"Microenvironment")
+        self.tabWidget.addTab(self.celldef_tab,"Cell Types")
+        # self.tabWidget.addTab(self.cell_customdata_tab,"Cell Custom Data")
+        self.tabWidget.addTab(self.user_params_tab,"User Params")
+        self.tabWidget.addTab(self.run_tab,"Run")
         if show_vis_flag:
             print("studio.py: creating vis_tab (Plot tab)")
             self.vis_tab = Vis(self.nanohub_flag)
+            # self.vis_tab.setEnabled(False)
             # self.vis_tab.nanohub_flag = self.nanohub_flag
             # self.vis_tab.xml_root = self.xml_root
-            tabWidget.addTab(self.vis_tab,"Plot")
+            self.tabWidget.addTab(self.vis_tab,"Plot")
+            # self.tabWidget.setTabEnabled(5, False)
+            self.enablePlotTab(False)
+
             self.run_tab.vis_tab = self.vis_tab
             print("studio.py: calling vis_tab.substrates_cbox_changed_cb(2)")
             self.vis_tab.fill_substrates_combobox(self.celldef_tab.substrate_list)
@@ -236,18 +242,20 @@ class PhysiCellXMLCreator(QWidget):
             self.vis_tab.init_plot_range(self.config_tab)
             self.vis_tab.show_edge = False
 
-        vlayout.addWidget(tabWidget)
+        vlayout.addWidget(self.tabWidget)
         # self.addTab(self.sbml_tab,"SBML")
 
-        # tabWidget.setCurrentIndex(1)  # rwh/debug: select Microenv
-        # tabWidget.setCurrentIndex(2)  # rwh/debug: select Cell Types
+        # self.tabWidget.setCurrentIndex(1)  # rwh/debug: select Microenv
+        # self.tabWidget.setCurrentIndex(2)  # rwh/debug: select Cell Types
         if show_vis_flag:
-            tabWidget.setCurrentIndex(0)    # Cconfig Basics
-            # tabWidget.setCurrentIndex(5)    # Plot
-            # tabWidget.setCurrentIndex(2)    # Cell Types
+            self.tabWidget.setCurrentIndex(0)    # Cconfig Basics
+            # self.tabWidget.setCurrentIndex(2)    # Cell Types
+            # self.tabWidget.setCurrentIndex(5)    # Plot
         else:
-            tabWidget.setCurrentIndex(0)  # Config (default)
+            self.tabWidget.setCurrentIndex(0)  # Config (default)
 
+    def enablePlotTab(self, bval):
+        self.tabWidget.setTabEnabled(5, bval)
 
     def menu(self):
         menubar = QMenuBar(self)
@@ -264,6 +272,9 @@ class PhysiCellXMLCreator(QWidget):
         file_menu.addAction("celltypes3", self.celltypes3_cb)
         file_menu.addAction("pred_prey_farmer", self.pred_prey_cb)
         file_menu.addAction("Save as mymodel.xml", self.save_as_cb)
+
+        view_menu = menubar.addMenu('&View')
+        view_menu.addAction("Show/Hide plot range", self.view_plot_range_cb)
 
         #--------------
         # samples_menu = file_menu.addMenu("Samples (copy of)")
@@ -441,6 +452,10 @@ class PhysiCellXMLCreator(QWidget):
         self.user_params_tab.fill_gui()
 
         self.vis_tab.init_plot_range(self.config_tab)
+        self.vis_tab.reset_model()
+        # self.vis_tab.setEnabled(False)
+        self.enablePlotTab(False)
+        self.tabWidget.setCurrentIndex(0)  # Config (default)
 
 
     def show_sample_model(self):
@@ -470,6 +485,9 @@ class PhysiCellXMLCreator(QWidget):
         save_as_file = "mymodel.xml"
         print("studio.py:  save_as_cb: writing to: ",save_as_file) # writing to:  ('/Users/heiland/git/PhysiCell-model-builder/rwh.xml', 'All Files (*)')
         self.tree.write(save_as_file)
+
+    def view_plot_range_cb(self):
+        self.vis_tab.show_hide_plot_range()
 
     def indent(elem, level=0):
         i = "\n" + level*"  "
@@ -651,6 +669,7 @@ class PhysiCellXMLCreator(QWidget):
             self.run_tab.exec_name.setText('../pred_prey')
         self.vis_tab.show_edge = True
         self.vis_tab.bgcolor = [1,1,1,1]
+        # self.vis_tab.reset_model()
 
 
 def main():

@@ -23,10 +23,11 @@ class QHLine(QFrame):
         self.setFrameShadow(QFrame.Sunken)
 
 class RunModel(QWidget):
-    def __init__(self, nanohub_flag):
+    def __init__(self, nanohub_flag, tab_widget):
         super().__init__()
 
         self.nanohub_flag = nanohub_flag
+        self.tab_widget = tab_widget
 
         #-------------------------------------------
         # used with nanoHUB app
@@ -182,6 +183,10 @@ class RunModel(QWidget):
 
 
         if self.p is None:  # No process running.
+            # self.vis_tab.setEnabled(True)
+            # self.pStudio.enablePlotTab(True)
+            # self.tab_widget.enablePlotTab(True)
+            self.tab_widget.setTabEnabled(5, True)
             self.message("Executing process")
             self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
             self.p.readyReadStandardOutput.connect(self.handle_stdout)
