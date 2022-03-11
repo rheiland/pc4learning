@@ -201,7 +201,9 @@ class RunModel(QWidget):
             # self.vis_tab.setEnabled(True)
             # self.pStudio.enablePlotTab(True)
             # self.tab_widget.enablePlotTab(True)
-            self.tab_widget.setTabEnabled(5, True)
+
+            # self.tab_widget.setTabEnabled(5, True)
+            self.tab_widget.setTabEnabled(6, True)   # disable Plot tab until a sim has been Run (index depends on About tab being defined or not)
             self.message("Executing process")
             self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
             self.p.readyReadStandardOutput.connect(self.handle_stdout)

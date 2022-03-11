@@ -8,7 +8,9 @@ Dr. Paul Macklin (macklinp@iu.edu)
 0.1 - initial version
 """
 
-import sys
+import os
+# import sys
+from pathlib import Path
 # import xml.etree.ElementTree as ET  # https://docs.python.org/2/library/xml.etree.elementtree.html
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QFrame,QApplication,QWidget,QTabWidget,QFormLayout,QLineEdit, QHBoxLayout,QVBoxLayout,QRadioButton,QLabel,QCheckBox,QComboBox,QScrollArea, QTextEdit
@@ -40,7 +42,20 @@ class About(QWidget):
         self.scroll = QScrollArea()  # might contain centralWidget
 
         self.text = QTextEdit()
-        self.text.setPlainText("Hello, world")
+        # self.text.setPlainText("Hello, world")
+        # doc_dir = os.path.abspath('doc')
+        # # html_file = Path(doc_dir,"about.html")
+        # html_file = Path("doc","about.html")
+        # print(html_file)
+        f = QtCore.QFile("doc/about.html")
+        # f = QtCore.QFile("html_file")
+        f.open(QtCore.QFile.ReadOnly|QtCore.QFile.Text)
+        print("\n\n------------------- about_tab.py:  f.isOpen() = ",f.isOpen())
+        print("------------------- \n\n")
+        istream = QtCore.QTextStream(f)
+        self.text.setHtml(istream.readAll())
+        f.close()
+
         self.vbox = QVBoxLayout()
         self.vbox.addStretch(0)
 

@@ -223,7 +223,7 @@ class PhysiCellXMLCreator(QWidget):
             QTabBar::tab:selected {background: orange;}   #  dodgerblue
             """
         self.tabWidget.setStyleSheet(stylesheet)
-        # self.tabWidget.addTab(self.about_tab,"About")  # Drew: uncomment to show
+        self.tabWidget.addTab(self.about_tab,"About")
         self.tabWidget.addTab(self.config_tab,"Config Basics")
         self.tabWidget.addTab(self.microenv_tab,"Microenvironment")
         self.tabWidget.addTab(self.celldef_tab,"Cell Types")
@@ -253,14 +253,13 @@ class PhysiCellXMLCreator(QWidget):
         # self.tabWidget.setCurrentIndex(1)  # rwh/debug: select Microenv
         # self.tabWidget.setCurrentIndex(2)  # rwh/debug: select Cell Types
         if show_vis_flag:
-            self.tabWidget.setCurrentIndex(0)    # Cconfig Basics
-            # self.tabWidget.setCurrentIndex(2)    # Cell Types
-            # self.tabWidget.setCurrentIndex(5)    # Plot
+            self.tabWidget.setCurrentIndex(0)    # About
         else:
-            self.tabWidget.setCurrentIndex(0)  # Config (default)
+            self.tabWidget.setCurrentIndex(0)  # About
 
     def enablePlotTab(self, bval):
-        self.tabWidget.setTabEnabled(5, bval)
+        # self.tabWidget.setTabEnabled(5, bval)
+        self.tabWidget.setTabEnabled(6, bval)   # tab index = 6 if About tab is defined
 
     def menu(self):
         menubar = QMenuBar(self)
