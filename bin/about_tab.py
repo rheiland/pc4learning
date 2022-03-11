@@ -11,7 +11,7 @@ Dr. Paul Macklin (macklinp@iu.edu)
 import sys
 # import xml.etree.ElementTree as ET  # https://docs.python.org/2/library/xml.etree.elementtree.html
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtWidgets import QFrame,QApplication,QWidget,QTabWidget,QFormLayout,QLineEdit, QHBoxLayout,QVBoxLayout,QRadioButton,QLabel,QCheckBox,QComboBox,QScrollArea
+from PyQt5.QtWidgets import QFrame,QApplication,QWidget,QTabWidget,QFormLayout,QLineEdit, QHBoxLayout,QVBoxLayout,QRadioButton,QLabel,QCheckBox,QComboBox,QScrollArea, QTextEdit
 
 class QHLine(QFrame):
     def __init__(self):
@@ -39,7 +39,8 @@ class About(QWidget):
 
         self.scroll = QScrollArea()  # might contain centralWidget
 
-        self.config_params = QWidget()
+        self.text = QTextEdit()
+        self.text.setPlainText("Hello, world")
         self.vbox = QVBoxLayout()
         self.vbox.addStretch(0)
 
@@ -58,13 +59,14 @@ class About(QWidget):
 
 
         #==================================================================
-        self.config_params.setLayout(self.vbox)
+        self.text.setLayout(self.vbox)
 
         self.scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         self.scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         self.scroll.setWidgetResizable(True)
 
-        self.scroll.setWidget(self.config_params) # self.config_params = QWidget()
+        # self.scroll.setWidget(self.config_params) # self.config_params = QWidget()
+        self.scroll.setWidget(self.text) 
 
         self.layout = QVBoxLayout(self)
 
