@@ -22,6 +22,7 @@ from xml.dom import minidom
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import *
 
+from about_tab import About
 from config_tab import Config
 from cell_def_tab import CellDef 
 from microenv_tab import SubstrateDef 
@@ -151,6 +152,8 @@ class PhysiCellXMLCreator(QWidget):
         # self.tree = ET.parse(read_file)
         self.xml_root = self.tree.getroot()
 
+        self.about_tab = About(self.nanohub_flag)
+
         # self.template_cb()
 
         # self.num_models = 0
@@ -220,6 +223,7 @@ class PhysiCellXMLCreator(QWidget):
             QTabBar::tab:selected {background: orange;}   #  dodgerblue
             """
         self.tabWidget.setStyleSheet(stylesheet)
+        # self.tabWidget.addTab(self.about_tab,"About")  # Drew: uncomment to show
         self.tabWidget.addTab(self.config_tab,"Config Basics")
         self.tabWidget.addTab(self.microenv_tab,"Microenvironment")
         self.tabWidget.addTab(self.celldef_tab,"Cell Types")
