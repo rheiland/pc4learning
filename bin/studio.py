@@ -57,6 +57,7 @@ class PhysiCellXMLCreator(QWidget):
         if( 'HOME' in os.environ.keys() ):
             self.nanohub_flag = "home/nanohub" in os.environ['HOME']
 
+        self.p = None # Necessary to download files!
 
         # self.title_prefix = "PhysiCell Studio: "
         self.title_prefix = "pc4learning: "
