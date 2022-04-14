@@ -114,9 +114,14 @@ class PhysiCellXMLCreator(QWidget):
         print("-------- dataDirectory (relative) =",dataDirectory)
         self.absolute_data_dir = os.path.abspath(dataDirectory)
         print("-------- absolute_data_dir =",self.absolute_data_dir)
-        os.environ['KIDNEY_DATA_PATH'] = self.absolute_data_dir
-        # dataDirectory = os.path.join(binDirectory,'..','config')
-        # dataDirectory = os.path.join('.','config')
+
+        # NOTE: if your C++ needs to also have an absolute path to data dir, do so via an env var
+        # os.environ['KIDNEY_DATA_PATH'] = self.absolute_data_dir
+
+        docDirectory = os.path.join(binDirectory,'..','doc')
+        self.absolute_doc_dir = os.path.abspath(docDirectory)
+        print("-------- absolute_doc_dir =",self.absolute_doc_dir)
+
 
         # read_file = model_name + ".xml"
         # read_file = os.path.join(dataDirectory, model_name + ".xml")
@@ -152,7 +157,8 @@ class PhysiCellXMLCreator(QWidget):
         # self.tree = ET.parse(read_file)
         self.xml_root = self.tree.getroot()
 
-        self.about_tab = About(self.nanohub_flag)
+        # self.about_tab = About(self.nanohub_flag)
+        self.about_tab = About(self.absolute_doc_dir)
 
         # self.template_cb()
 
@@ -199,7 +205,7 @@ class PhysiCellXMLCreator(QWidget):
 
         self.tabWidget = QTabWidget()
 
-        self.run_tab = RunModel(self.nanohub_flag, self.tabWidget)
+        self.run_tab = RunModel(self.nanohub_flag, self.tabWidget, self.download_menu)
         self.homedir = os.getcwd()
         print("studio.py: self.homedir = ",self.homedir)
         self.run_tab.homedir = self.homedir
@@ -266,17 +272,28 @@ class PhysiCellXMLCreator(QWidget):
         menubar.setNativeMenuBar(False)
 
         #--------------
-        file_menu = menubar.addMenu('&Model')
+        file_menu = menubar.addMenu('&File')
+        file_menu.addAction("Save as mymodel.xml", self.save_as_cb)
+
+        self.download_menu = file_menu.addMenu('Download')
+        self.download_config_item = self.download_menu.addAction("Download config.xml", self.download_config_cb)
+        self.download_svg_item = self.download_menu.addAction("Download SVG", self.download_svg_cb)
+        self.download_mat_item = self.download_menu.addAction("Download binary (.mat) data", self.download_full_cb)
+        # self.download_menu_item.setEnabled(False)
+        self.download_menu.setEnabled(False)
+
+        #-----
+        model_menu = menubar.addMenu('&Model')
 
         # open_act = QtGui.QAction('Open', self, checkable=True)
         # open_act = QtGui.QAction('Open', self)
         # open_act.triggered.connect(self.open_as_cb)
         # file_menu.addAction("New (template)", self.new_model_cb, QtGui.QKeySequence('Ctrl+n'))
-        file_menu.addAction("biorobots", self.biorobots_cb)
-        file_menu.addAction("celltypes3", self.celltypes3_cb)
-        file_menu.addAction("pred_prey_farmer", self.pred_prey_cb)
-        file_menu.addAction("Save as mymodel.xml", self.save_as_cb)
+        model_menu.addAction("biorobots", self.biorobots_cb)
+        model_menu.addAction("celltypes3", self.celltypes3_cb)
+        model_menu.addAction("pred_prey_farmer", self.pred_prey_cb)
 
+        #-----
         view_menu = menubar.addMenu('&View')
         view_menu.addAction("Show/Hide plot range", self.view_plot_range_cb)
 
@@ -349,6 +366,87 @@ class PhysiCellXMLCreator(QWidget):
         # validate_act.triggered.connect(self.validate_cb)
 
         menubar.adjustSize()  # Argh. Otherwise, only 1st menu appears, with ">>" to others!
+
+    #-----------------------------------------------------------------
+    def message(self, s):
+        # self.text.appendPlainText(s)
+        print(s)
+
+    def handle_stderr(self):
+        data = self.p.readAllStandardError()
+        stderr = bytes(data).decode("utf8")
+        self.message(stderr)
+
+    def handle_stdout(self):
+        data = self.p.readAllStandardOutput()
+        stdout = bytes(data).decode("utf8")
+        self.message(stdout)
+
+    def handle_state(self, state):
+        states = {
+            QProcess.NotRunning: 'Not running',
+            QProcess.Starting: 'Starting',
+            QProcess.Running: 'Running',
+        }
+        state_name = states[state]
+        self.message(f"State changed: {state_name}")
+
+    def process_finished(self):
+        self.message("Download process finished.")
+        print("-- download finished.")
+        self.p = None
+
+    def download_config_cb(self):
+        if self.nanohub_flag:
+            if self.p is None:  # No process running.
+                self.p = QProcess()
+                self.p.readyReadStandardOutput.connect(self.handle_stdout)
+                self.p.readyReadStandardError.connect(self.handle_stderr)
+                self.p.stateChanged.connect(self.handle_state)
+                self.p.finished.connect(self.process_finished)  # Clean up once complete.
+
+                self.p.start("exportfile config.xml")
+        return
+
+    def download_svg_cb(self):
+        if self.nanohub_flag:
+            if self.p is None:  # No process running.
+                self.p = QProcess()
+                self.p.readyReadStandardOutput.connect(self.handle_stdout)
+                self.p.readyReadStandardError.connect(self.handle_stderr)
+                self.p.stateChanged.connect(self.handle_state)
+                self.p.finished.connect(self.process_finished)  # Clean up once complete.
+
+                # file_str = os.path.join(self.output_dir, '*.svg')
+                file_str = "*.svg"
+                print('-------- download_svg_cb(): zip up all ',file_str)
+                with zipfile.ZipFile('svg.zip', 'w') as myzip:
+                    for f in glob.glob(file_str):
+                        myzip.write(f, os.path.basename(f))   # 2nd arg avoids full filename 
+                self.p.start("exportfile svg.zip")
+        return
+
+    def download_full_cb(self):
+        if self.nanohub_flag:
+            if self.p is None:  # No process running.
+                self.p = QProcess()
+                self.p.readyReadStandardOutput.connect(self.handle_stdout)
+                self.p.readyReadStandardError.connect(self.handle_stderr)
+                self.p.stateChanged.connect(self.handle_state)
+                self.p.finished.connect(self.process_finished)  # Clean up once complete.
+
+                # file_xml = os.path.join(self.output_dir, '*.xml')
+                # file_mat = os.path.join(self.output_dir, '*.mat')
+                file_xml = '*.xml'
+                file_mat = '*.mat'
+                print('-------- download_full_cb(): zip up all .xml and .mat')
+                with zipfile.ZipFile('mcds.zip', 'w') as myzip:
+                    for f in glob.glob(file_xml):
+                        myzip.write(f, os.path.basename(f)) # 2nd arg avoids full filename path in the archive
+                    for f in glob.glob(file_mat):
+                        myzip.write(f, os.path.basename(f))
+                self.p.start("exportfile mcds.zip")
+        return
 
     #-----------------------------------------------------------------
     def add_new_model(self, name, read_only):

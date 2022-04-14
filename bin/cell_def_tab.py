@@ -45,7 +45,10 @@ class CellDef(QWidget):
         self.xml_root = None
         self.debug_print_fill_xml = True
         self.custom_data_count = 0
-        self.max_custom_data_rows = 99
+
+        # self.max_custom_data_rows = 99
+        self.max_custom_data_rows = 10
+
         self.max_entries = self.max_custom_data_rows
         self.master_custom_varname = []
         # self.custom_data_units_width = 90

@@ -731,9 +731,9 @@ class Vis(QWidget):
                 # print("Once output files are generated, click the slider.")   
                 print("play_plot_cb():  Reached the end (or no output files found).")
                 # self.timer.stop()
-                # self.current_svg_frame -= 1
+                self.current_svg_frame -= 1
                 self.animating_flag = True
-                self.current_svg_frame = 0
+                # self.current_svg_frame = 0
                 self.animate()
                 return
 
