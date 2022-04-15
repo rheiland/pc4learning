@@ -13,6 +13,8 @@ import os
 import sys
 import getopt
 import shutil
+import glob
+import zipfile
 from pathlib import Path
 import xml.etree.ElementTree as ET  # https://docs.python.org/2/library/xml.etree.elementtree.html
 from xml.dom import minidom
@@ -277,12 +279,15 @@ class PhysiCellXMLCreator(QWidget):
         file_menu = menubar.addMenu('&File')
         file_menu.addAction("Save as mymodel.xml", self.save_as_cb)
 
-        self.download_menu = file_menu.addMenu('Download')
-        self.download_config_item = self.download_menu.addAction("Download config.xml", self.download_config_cb)
-        self.download_svg_item = self.download_menu.addAction("Download SVG", self.download_svg_cb)
-        self.download_mat_item = self.download_menu.addAction("Download binary (.mat) data", self.download_full_cb)
-        # self.download_menu_item.setEnabled(False)
-        self.download_menu.setEnabled(False)
+        if self.nanohub_flag:
+            self.download_menu = file_menu.addMenu('Download')
+            self.download_config_item = self.download_menu.addAction("Download config.xml", self.download_config_cb)
+            self.download_svg_item = self.download_menu.addAction("Download SVG", self.download_svg_cb)
+            self.download_mat_item = self.download_menu.addAction("Download binary (.mat) data", self.download_full_cb)
+            # self.download_menu_item.setEnabled(False)
+            self.download_menu.setEnabled(False)
+        else:
+            self.download_menu = None
 
         #-----
         model_menu = menubar.addMenu('&Model')
