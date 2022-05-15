@@ -27,6 +27,7 @@ from PyQt5.QtCore import QProcess
 
 from about_tab import About
 from config_tab import Config
+from populate_tree_cell_defs import populate_tree_cell_defs
 from cell_def_tab import CellDef 
 from microenv_tab import SubstrateDef 
 from user_params_tab import UserParams 
@@ -82,8 +83,8 @@ class PhysiCellXMLCreator(QWidget):
         # lay.addLayout(self.grid)
         self.setLayout(vlayout)
 
-        self.resize(950, 770)  # width, height (height >= Cell Types|Death params)
-        self.setMinimumSize(750, 770)  # width, height (height >= Cell Types|Death params)
+        self.resize(1100, 770)  # width, height (height >= Cell Types|Death params)
+        self.setMinimumSize(1100, 770)  # width, height (height >= Cell Types|Death params)
         # self.setMinimumSize(1200, 770)  # width, height (height >= Cell Types|Death params)
 
         # self.menubar = QtWidgets.QMenuBar(self)
@@ -162,7 +163,7 @@ class PhysiCellXMLCreator(QWidget):
         self.xml_root = self.tree.getroot()
 
         # self.about_tab = About(self.nanohub_flag)
-        self.about_tab = About(self.absolute_doc_dir)
+        self.about_tab = About(self.absolute_doc_dir, self.nanohub_flag)
 
         # self.template_cb()
 
@@ -185,8 +186,10 @@ class PhysiCellXMLCreator(QWidget):
         self.celldef_tab.xml_root = self.xml_root
         cd_name = self.celldef_tab.first_cell_def_name()
         print("studio.py: cd_name=",cd_name)
-        self.celldef_tab.populate_tree()
+        populate_tree_cell_defs(self.celldef_tab)
+        # self.celldef_tab.populate_tree()
         self.celldef_tab.fill_substrates_comboboxes()
+        self.celldef_tab.fill_celltypes_comboboxes()
         # self.vis_tab.substrates_cbox_changed_cb(2)
         self.microenv_tab.celldef_tab = self.celldef_tab
 
@@ -299,78 +302,11 @@ class PhysiCellXMLCreator(QWidget):
         model_menu.addAction("biorobots", self.biorobots_cb)
         model_menu.addAction("celltypes3", self.celltypes3_cb)
         model_menu.addAction("pred_prey_farmer", self.pred_prey_cb)
+        model_menu.addAction("interactions", self.interactions_cb)
 
         #-----
         view_menu = menubar.addMenu('&View')
         view_menu.addAction("Show/Hide plot range", self.view_plot_range_cb)
-
-        #--------------
-        # samples_menu = file_menu.addMenu("Samples (copy of)")
-        # # biorobots_act = QtGui.QAction('biorobots', self)
-        # biorobots_act = QAction('biorobots', self)
-        # samples_menu.addAction(biorobots_act)
-        # biorobots_act.triggered.connect(self.biorobots_cb)
-
-        # cancer_biorobots_act = QAction('cancer biorobots', self)
-        # samples_menu.addAction(cancer_biorobots_act)
-        # cancer_biorobots_act.triggered.connect(self.cancer_biorobots_cb)
-
-        # hetero_act = QAction('heterogeneity', self)
-        # samples_menu.addAction(hetero_act)
-        # hetero_act.triggered.connect(self.hetero_cb)
-
-        # pred_prey_act = QAction('predator-prey-farmer', self)
-        # samples_menu.addAction(pred_prey_act)
-        # pred_prey_act.triggered.connect(self.pred_prey_cb)
-
-        # virus_mac_act = QAction('virus-macrophage', self)
-        # samples_menu.addAction(virus_mac_act)
-        # virus_mac_act.triggered.connect(self.virus_mac_cb)
-
-        # worm_act = QAction('worm', self)
-        # samples_menu.addAction(worm_act)
-        # worm_act.triggered.connect(self.worm_cb)
-
-        # cancer_immune_act = QAction('cancer immune (3D)', self)
-        # samples_menu.addAction(cancer_immune_act)
-        # cancer_immune_act.triggered.connect(self.cancer_immune_cb)
-
-        # template_act = QAction('template', self)
-        # samples_menu.addAction(template_act)
-        # template_act.triggered.connect(self.template_cb)
-
-        # subcell_act = QAction('subcellular', self)
-        # samples_menu.addAction(subcell_act)
-        # subcell_act.triggered.connect(self.subcell_cb)
-
-        # covid19_act = QAction('covid19_v5', self)
-        # samples_menu.addAction(covid19_act)
-        # covid19_act.triggered.connect(self.covid19_cb)
-
-        # test_gui_act = QAction('test-gui', self)
-        # samples_menu.addAction(test_gui_act)
-        # test_gui_act.triggered.connect(self.test_gui_cb)
-
-        #--------------
-        # file_menu.addAction(open_act)
-        # file_menu.addAction(recent_act)
-        # file_menu.addAction(save_act)
-        # file_menu.addAction(save_act, self.save_act, QtGui.QKeySequence("Ctrl+s"))
-        # file_menu.addAction(saveas_act)
-
-
-        #--------------
-        # self.models_menu = menubar.addMenu('&Models')
-        # models_menu_act = QAction('-----', self)
-        # self.models_menu.addAction(models_menu_act)
-        # models_menu_act.triggered.connect(self.select_current_model_cb)
-        # # self.models_menu.addAction('Load sample', self.select_current_model_cb)
-
-        #--------------
-        # tools_menu = menubar.addMenu('&Tools')
-        # validate_act = QAction('Validate', self)
-        # tools_menu.addAction(validate_act)
-        # validate_act.triggered.connect(self.validate_cb)
 
         menubar.adjustSize()  # Argh. Otherwise, only 1st menu appears, with ">>" to others!
 
@@ -502,7 +438,8 @@ class PhysiCellXMLCreator(QWidget):
         self.celldef_tab.xml_root = self.xml_root
         cd_name = self.celldef_tab.first_cell_def_name()
         print("studio.py: cd_name=",cd_name)
-        self.celldef_tab.populate_tree()
+        # self.celldef_tab.populate_tree()
+        populate_tree_cell_defs(self.celldef_tab)
         self.celldef_tab.fill_substrates_comboboxes()
         # self.vis_tab.substrates_cbox_changed_cb(2)
         self.microenv_tab.celldef_tab = self.celldef_tab
@@ -548,7 +485,8 @@ class PhysiCellXMLCreator(QWidget):
 
         # self.celldef_tab.clear_gui()
         self.celldef_tab.clear_custom_data_params()
-        self.celldef_tab.populate_tree()
+        # self.celldef_tab.populate_tree()
+        populate_tree_cell_defs(self.celldef_tab)
         # self.celldef_tab.fill_gui(None)
         # self.celldef_tab.customize_cycle_choices() #rwh/todo: needed? 
         self.celldef_tab.fill_substrates_comboboxes()
@@ -780,6 +718,39 @@ class PhysiCellXMLCreator(QWidget):
         self.vis_tab.bgcolor = [1,1,1,1]
         # self.vis_tab.reset_model()
 
+
+    def interactions_cb(self):
+        os.chdir(self.homedir)
+        name = "interactions"
+        # sample_file = Path("data", name + ".xml")
+        sample_file = Path(self.absolute_data_dir, name + ".xml")
+        copy_file = "copy_" + name + ".xml"
+        try:
+            print("interactions_cb():------------- copying ",sample_file," to ",copy_file)
+            shutil.copy(sample_file, copy_file)
+        except:
+            print("interactions_cb(): Unable to copy file(1).")
+            sys.exit(1)
+
+        try:
+            print("interactions_cb():------------- copying ",sample_file," to config.xml")
+            shutil.copy(sample_file, "config.xml")
+        except:
+            print("interactions_cb(): Unable to copy file(2).")
+            sys.exit(1)
+
+        self.add_new_model(copy_file, True)
+        self.config_file = copy_file
+        print("interactions_cb:   self.config_file = ",self.config_file)
+
+        self.show_sample_model()
+        if self.nanohub_flag:
+            self.run_tab.exec_name.setText('interactions')
+        else:
+            self.run_tab.exec_name.setText('../interactions')
+        self.vis_tab.show_edge = True
+        self.vis_tab.bgcolor = [1,1,1,1]
+        # self.vis_tab.reset_model()
 
 def main():
     inputfile = ''

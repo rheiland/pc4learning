@@ -43,14 +43,16 @@ class SubstrateDef(QWidget):
 
         splitter = QSplitter()
 
-        tree_widget_width = 160
+        tree_widget_width = 240
         tree_widget_height = 400
 
         self.tree = QTreeWidget() # tree is overkill; list would suffice; Meh.
         # self.tree.itemDoubleClicked.connect(self.treeitem_edit_cb)
         # self.tree.setStyleSheet("background-color: lightgray")
-        self.tree.setFixedWidth(tree_widget_width)
+
+        # self.tree.setFixedWidth(tree_widget_width)
         self.tree.setFixedHeight(tree_widget_height)
+
         # self.tree.currentChanged(self.tree_item_changed_cb)
         self.tree.itemClicked.connect(self.tree_item_clicked_cb)
         # self.tree.itemSelectionChanged.connect(self.tree_item_changed_cb2)
@@ -80,12 +82,12 @@ class SubstrateDef(QWidget):
         # self.microenv_hbox.addWidget(self.name_list)
 
 
-        self.scroll_cell_def_tree = QScrollArea()
-        self.scroll_cell_def_tree.setWidget(self.tree)
-        # self.scroll_cell_def_tree.setWidget(self.name_list)
+        self.scroll_substrate_tree = QScrollArea()
+        self.scroll_substrate_tree.setWidget(self.tree)
+        # self.scroll_substrate_tree.setWidget(self.name_list)
 
         # splitter.addWidget(self.tree)
-        splitter.addWidget(self.scroll_cell_def_tree)
+        splitter.addWidget(self.scroll_substrate_tree)
 
         #-------------------------------------------
         # self.tab = QWidget()
@@ -93,7 +95,7 @@ class SubstrateDef(QWidget):
         
         #-------------------------------------------
         label_width = 150
-        units_width = 80
+        units_width = 150
 
         # self.scroll = QScrollArea()
         self.scroll_area = QScrollArea()
@@ -102,7 +104,7 @@ class SubstrateDef(QWidget):
 
         self.microenv_params = QWidget()
         self.vbox = QVBoxLayout()
-        self.vbox.addStretch(0)
+        # self.vbox.addStretch(0)
 
         # self.microenv_hbox.addWidget(self.)
 
@@ -206,7 +208,7 @@ class SubstrateDef(QWidget):
         hbox.addWidget(self.dirichlet_bc)
 
         units = QLabel("mmol")
-        units.setFixedWidth(units_width)
+        units.setFixedWidth(units_width-45)  # decrease for better alignment
         hbox.addWidget(units)
 
 # 			<Dirichlet_boundary_condition units="dimensionless" enabled="false">0</Dirichlet_boundary_condition>
@@ -420,7 +422,7 @@ class SubstrateDef(QWidget):
 
 
     def diffusion_coef_changed(self, text):
-        print("Text: %s", text)
+        # print("Text: %s", text)
         self.param_d[self.current_substrate]["diffusion_coef"] = text
         # log.info("diffusion_coef changed: %s", text)
 
@@ -648,9 +650,12 @@ class SubstrateDef(QWidget):
         # print('------      item_idx=',item_idx)
         self.tree.takeTopLevelItem(self.tree.indexOfTopLevelItem(self.tree.currentItem()))
 
-        self.celldef_tab.delete_substrate(item_idx)
+        # self.celldef_tab.delete_substrate(item_idx)
         # print('------      new name=',self.tree.currentItem().text(0))
         self.current_substrate = self.tree.currentItem().text(0)
+
+        # do this last
+        self.celldef_tab.delete_substrate(item_idx, self.current_substrate)
 
 
     #----------------------------------------------------------------------
@@ -667,6 +672,7 @@ class SubstrateDef(QWidget):
         # print('prev_name= ',prev_name)
         self.current_substrate = it.text(col)
         self.param_d[self.current_substrate] = self.param_d.pop(prev_name)  # sweet
+
         # print('self.current_substrate= ',self.current_substrate )
         # for k in self.param_d.keys():
         #     print(" ===>>> ",k, " : ", self.param_d[k])
@@ -1123,6 +1129,7 @@ class SubstrateDef(QWidget):
 
 #dirichlet_xmin 
                 subelm = ET.SubElement(elm, "Dirichlet_options")
+                subelm.text = indent10
                 subelm.tail = indent8
                 subelm2 = ET.SubElement(subelm, "boundary_value",{"ID":"xmin", 
                     "enabled":str(self.param_d[substrate]["enable_xmin"])} )

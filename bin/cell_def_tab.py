@@ -5,6 +5,7 @@ Adam Morrow, Grant Waldrow, Drew Willis, Kim Crevecoeur
 Dr. Paul Macklin (macklinp@iu.edu)
 """
 
+import os
 import sys
 import copy
 import xml.etree.ElementTree as ET  # https://docs.python.org/2/library/xml.etree.elementtree.html
@@ -32,7 +33,9 @@ class CellDef(QWidget):
         # primary key = cell def name
         # secondary keys: cycle_rate_choice, cycle_dropdown, 
         self.param_d = {}  # a dict of dicts
-        self.default_sval = '0.0'
+        # self.chemotactic_sensitivity_dict = {}   # rwh - bogus/not useful since we need per cell type
+        self.default_sval = '0.0'  # default scalar value (as string)
+        self.default_affinity = '1.0'
         self.default_bval = False
         self.default_time_units = "min"
         self.default_rate_units = "1/min"
@@ -40,15 +43,13 @@ class CellDef(QWidget):
         self.current_cell_def = None
         self.new_cell_def_count = 1
         self.label_width = 210
-        self.units_width = 70
+        self.units_width = 110
         self.idx_current_cell_def = 1    # 1-offset for XML (ElementTree, ET)
         self.xml_root = None
+        self.config_path = None
         self.debug_print_fill_xml = True
         self.custom_data_count = 0
-
-        # self.max_custom_data_rows = 99
-        self.max_custom_data_rows = 10
-
+        self.max_custom_data_rows = 99
         self.max_entries = self.max_custom_data_rows
         self.master_custom_varname = []
         # self.custom_data_units_width = 90
@@ -56,6 +57,7 @@ class CellDef(QWidget):
         self.cycle_duration_flag = False
 
         self.substrate_list = []
+        self.celltypes_list = []
 
         # Use a QStackedWidget to let us swap out sets of widgets, depending on the cycle model chosen.
         self.stacked_cycle = QStackedWidget()
@@ -121,11 +123,13 @@ class CellDef(QWidget):
         self.tree.setFixedHeight(tree_widget_height)
         # self.tree.setColumnCount(1)
         self.tree.itemClicked.connect(self.tree_item_clicked_cb)
-        self.tree.itemChanged.connect(self.tree_item_changed_cb)   # rename a substrate
+        self.tree.itemChanged.connect(self.tree_item_changed_cb)   # rename a cell type
 
         header = QTreeWidgetItem(["---  Cell Type  ---"])
         self.tree.setHeaderItem(header)
 
+        self.physiboss_boolean_frame = QFrame()
+        
         items = []
         model = QtCore.QStringListModel()
         model.setStringList(["aaa","bbb"])
@@ -159,6 +163,7 @@ class CellDef(QWidget):
         self.mechanics_tab = QWidget()
         self.motility_tab = QWidget()
         self.secretion_tab = QWidget()
+        self.interaction_tab = QWidget()
 
         self.custom_data_tab = QWidget()
         self.custom_data_name = []
@@ -186,7 +191,10 @@ class CellDef(QWidget):
         self.tab_widget.addTab(self.create_mechanics_tab(),"Mechanics")
         self.tab_widget.addTab(self.create_motility_tab(),"Motility")
         self.tab_widget.addTab(self.create_secretion_tab(),"Secretion")
+        self.tab_widget.addTab(self.create_interaction_tab(),"Interactions")
+        self.tab_widget.addTab(self.create_intracellular_tab(),"Intracellular")
         self.tab_widget.addTab(self.create_custom_data_tab(),"Custom Data")
+        # self.tab_widget.addTab(self.create_rules_tab(),"Rules")
 
         self.cell_types_tabs_layout = QGridLayout()
         self.cell_types_tabs_layout.addWidget(self.tab_widget, 0,0,1,1) # w, row, column, rowspan, colspan
@@ -198,6 +206,7 @@ class CellDef(QWidget):
         cdname = "cell_def%02d" % self.new_cell_def_count
         # Make a new substrate (that's a copy of the currently selected one)
         self.param_d[cdname] = copy.deepcopy(self.param_d[self.current_cell_def])
+        self.param_d[cdname]["ID"] = str(self.new_cell_def_count)
 
         # for k in self.param_d.keys():
         #     print(" (pre-new vals)===>>> ",k, " : ", self.param_d[k])
@@ -210,7 +219,8 @@ class CellDef(QWidget):
         self.new_volume_params(cdname)
         self.new_mechanics_params(cdname)
         self.new_motility_params(cdname)
-        # self.new_secretion_params(cdname)  # todo: fix this method
+        self.new_secretion_params(cdname)
+        self.new_interaction_params(cdname)
         # self.new_custom_data_params(cdname)
 
         # print("\n ----- new dict:")
@@ -220,6 +230,8 @@ class CellDef(QWidget):
 
         self.new_cell_def_count += 1
         self.current_cell_def = cdname
+
+        self.add_new_celltype(cdname)  # add to all qcomboboxes that have celltypes (e.g., in interactions)
 
         #-----  Update this new cell def's widgets' values
         num_items = self.tree.invisibleRootItem().childCount()
@@ -232,23 +244,44 @@ class CellDef(QWidget):
         self.tree_item_clicked_cb(treeitem, 0)
 
     #----------------------
-    # When a substrate is selected(via double-click) and renamed
+    # When a cell type is selected(via double-click) and renamed
     def tree_item_changed_cb(self, it,col):
-        # print('--------- tree_item_changed_cb():', it, col, it.text(col) )  # col=0 always
+        print('--------- tree_item_changed_cb():', it, col, it.text(col) )  # col=0 always
 
         prev_name = self.current_cell_def
-        # print('prev_name= ',prev_name)
+        print('prev_name= ',prev_name)
         self.current_cell_def = it.text(col)
+        print('new name= ',self.current_cell_def)
         self.param_d[self.current_cell_def] = self.param_d.pop(prev_name)  # sweet
+
+        self.renamed_celltype(prev_name, self.current_cell_def)
 
     #----------------------------------------------------------------------
     # @QtCore.Slot()
+    # Make a new cell_def (that's a copy of the currently selected one)
     def copy_cell_def(self):
         # print('------ copy_cell_def')
-        celldefname = "cell_def%02d" % self.new_cell_def_count
-        # print('------ self.current_cell_def = ', self.current_cell_def)
-        # Make a new cell_def (that's a copy of the currently selected one)
-        self.param_d[celldefname] = copy.deepcopy(self.param_d[self.current_cell_def])
+        cdname_copy = "cell_def%02d" % self.new_cell_def_count
+        cdname_original = self.current_cell_def
+        self.param_d[cdname_copy] = copy.deepcopy(self.param_d[cdname_original])
+        # self.param_d[cdname_copy]["ID"] = str(self.new_cell_def_count)  # no longer necessary; we auto-generate at 'save'
+
+        # we need to add the newly created cell def into each cell def's interaction/transformation dicts, with values of the copy
+        sval = self.default_sval
+        for cdname in self.param_d.keys():    # for each cell def
+            # for cdname2 in self.param_d[cdname]['live_phagocytosis_rate'].keys():    # for each cell def's 
+            for cdname2 in self.param_d.keys():    # for each cell def
+                # print('cdname2= ',cdname2)
+                if (cdname == cdname_copy) or (cdname2 == cdname_copy): # use default if not available
+                    self.param_d[cdname]['live_phagocytosis_rate'][cdname2] = sval
+                    self.param_d[cdname]['attack_rate'][cdname2] = sval
+                    self.param_d[cdname]['fusion_rate'][cdname2] = sval
+                    self.param_d[cdname]['transformation_rate'][cdname2] = sval
+
+                    self.param_d[cdname]['cell_adhesion_affinity'][cdname2] = '1.0'  # default affinity
+                # else: # use values from copied cell def
+
+        print("--> copy_cell_def():\n ",self.param_d[cdname_copy])
 
         # for k in self.param_d.keys():
         #     print(" (pre-new vals)===>>> ",k, " : ", self.param_d[k])
@@ -257,13 +290,15 @@ class CellDef(QWidget):
 
         self.new_cell_def_count += 1
 
-        self.current_cell_def = celldefname
-        # self.cell_type_name.setText(celldefname)
+        self.current_cell_def = cdname_copy
+        # self.cell_type_name.setText(cdname)
+
+        self.add_new_celltype(cdname_copy)  # add to all qcomboboxes that have celltypes (e.g., in interactions)
 
         #-----  Update this new cell def's widgets' values
         num_items = self.tree.invisibleRootItem().childCount()
         # print("tree has num_items = ",num_items)
-        treeitem = QTreeWidgetItem([celldefname])
+        treeitem = QTreeWidgetItem([cdname_copy])
         treeitem.setFlags(treeitem.flags() | QtCore.Qt.ItemIsEditable)
         self.tree.insertTopLevelItem(num_items,treeitem)
         self.tree.setCurrentItem(treeitem)
@@ -288,12 +323,34 @@ class CellDef(QWidget):
     # @QtCore.Slot()
     def delete_cell_def(self):
         num_items = self.tree.invisibleRootItem().childCount()
-        print('------ delete_cell_def: num_items=',num_items)
+        # print('------ delete_cell_def: num_items=',num_items)
         if num_items == 1:
             # print("Not allowed to delete all substrates.")
             # QMessageBox.information(self, "Not allowed to delete all substrates")
             self.show_delete_warning()
             return
+
+        item_idx = self.tree.indexFromItem(self.tree.currentItem()).row() 
+        # print('------      item_idx=',item_idx)
+        # delete celltype from dropdowns
+        self.live_phagocytosis_dropdown.removeItem(item_idx)
+        self.attack_rate_dropdown.removeItem(item_idx)
+        self.fusion_rate_dropdown.removeItem(item_idx)
+        self.cell_transformation_dropdown.removeItem(item_idx)
+
+        self.cell_adhesion_affinity_dropdown.removeItem(item_idx)
+
+        # for idx in range(len(self.celltypes_list)):
+        #     # print("idx,old,new = ",idx, old_name,new_name)
+        #     # if old_name in self.motility_substrate_dropdown.itemText(idx):
+        #     if old_name == self.live_phagocytosis_dropdown.itemText(idx):
+        #         self.live_phagocytosis_dropdown.setItemText(idx, new_name)
+        #     if old_name == self.attack_rate_dropdown.itemText(idx):
+        #         self.attack_rate_dropdown.setItemText(idx, new_name)
+        #     if old_name == self.fusion_rate_dropdown.itemText(idx):
+        #         self.fusion_rate_dropdown.setItemText(idx, new_name)
+        #     if old_name == self.cell_transformation_dropdown.itemText(idx):
+        #         self.cell_transformation_dropdown.setItemText(idx, new_name)
 
         # rwh: is this safe?
         del self.param_d[self.current_cell_def]
@@ -2041,6 +2098,22 @@ class CellDef(QWidget):
         units.setFixedWidth(self.units_width)
         units.setAlignment(QtCore.Qt.AlignLeft)
         glayout.addWidget(units, idr,2, 1,1) # w, row, column, rowspan, colspan
+
+        #------
+        label = QLabel("cell adhesion affinity")
+        label.setFixedWidth(self.label_width)
+        label.setAlignment(QtCore.Qt.AlignRight)
+        idr += 1
+        glayout.addWidget(label, idr,0, 1,1) # w, row, column, rowspan, colspan
+
+        self.cell_adhesion_affinity_dropdown = QComboBox()
+        glayout.addWidget(self.cell_adhesion_affinity_dropdown, idr,1, 1,1) # w, row, column, rowspan, colspan
+        self.cell_adhesion_affinity_dropdown.currentIndexChanged.connect(self.cell_adhesion_affinity_dropdown_changed_cb)  # beware: will be triggered on a ".clear" too
+
+        self.cell_adhesion_affinity = QLineEdit()
+        self.cell_adhesion_affinity.textChanged.connect(self.cell_adhesion_affinity_changed)
+        self.cell_adhesion_affinity.setValidator(QtGui.QDoubleValidator())
+        glayout.addWidget(self.cell_adhesion_affinity , idr,2, 1,1) # w, row, column, rowspan, colspan
     
         #---
     # <options>
@@ -2235,6 +2308,52 @@ class CellDef(QWidget):
         hbox.addWidget(self.chemotaxis_direction_against)
         glayout.addLayout(hbox, idr,1, 1,1) # w, row, column, rowspan, colspan
 
+        #---
+            # <advanced_chemotaxis>
+            #     <enabled>false</enabled>
+            #     <normalize_each_gradient>false</normalize_each_gradient>
+            #     <chemotactic_sensitivities>
+            #       <chemotactic_sensitivity substrate="resource">0</chemotactic_sensitivity> 
+            #       <chemotactic_sensitivity substrate="toxin">0</chemotactic_sensitivity> 
+            #       <chemotactic_sensitivity substrate="quorum">0</chemotactic_sensitivity> 
+            #       <chemotactic_sensitivity substrate="pro-inflammatory">0</chemotactic_sensitivity> 
+            #       <chemotactic_sensitivity substrate="debris">0</chemotactic_sensitivity> 
+            #     </chemotactic_sensitivities>
+            #   </advanced_chemotaxis>
+        idr += 1
+        glayout.addWidget(QHLine(), idr,0, 1,2) # w, row, column, rowspan, colspan
+
+        label = QLabel("Advanced Chemotaxis")
+        label.setFixedWidth(200)
+        label.setAlignment(QtCore.Qt.AlignCenter)
+        label.setStyleSheet('background-color: yellow')
+        idr += 1
+        glayout.addWidget(label, idr,0, 1,1) # w, row, column, rowspan, colspan
+
+        self.advanced_chemotaxis_enabled = QCheckBox("enabled")
+        self.advanced_chemotaxis_enabled.clicked.connect(self.advanced_chemotaxis_enabled_cb)
+        glayout.addWidget(self.advanced_chemotaxis_enabled, idr,1, 1,1) # w, row, column, rowspan, colspan
+
+        self.normalize_each_gradient = QCheckBox("normalize gradient")
+        self.normalize_each_gradient.clicked.connect(self.normalize_each_gradient_cb)
+        glayout.addWidget(self.normalize_each_gradient, idr,2, 1,1) # w, row, column, rowspan, colspan
+
+        self.motility2_substrate_dropdown = QComboBox()
+        # self.motility_substrate_dropdown.setFixedWidth(240)
+        idr += 1
+        glayout.addWidget(self.motility2_substrate_dropdown, idr,0, 1,1) # w, row, column, rowspan, colspan
+        self.motility2_substrate_dropdown.currentIndexChanged.connect(self.motility2_substrate_changed_cb)  # beware: will be triggered on a ".clear" too
+
+        label = QLabel("sensitivity")
+        label.setFixedWidth(self.label_width)
+        label.setAlignment(QtCore.Qt.AlignRight)
+        # idr += 1
+        glayout.addWidget(label, idr,1, 1,1) # w, row, column, rowspan, colspan
+
+        self.chemo_sensitivity = QLineEdit()
+        self.chemo_sensitivity.textChanged.connect(self.chemo_sensitivity_changed)
+        self.chemo_sensitivity.setValidator(QtGui.QDoubleValidator())
+        glayout.addWidget(self.chemo_sensitivity, idr,2, 1,1) # w, row, column, rowspan, colspan
 
         #------
         for idx in range(11):  # rwh: hack solution to align rows
@@ -2389,11 +2508,631 @@ class CellDef(QWidget):
         return secretion_tab
 
     #--------------------------------------------------------
+    def create_interaction_tab(self):
+            # <cell_interactions>
+            #   <dead_phagocytosis_rate units="1/min">0</dead_phagocytosis_rate>
+            #   <live_phagocytosis_rates>
+            #     <phagocytosis_rate name="bacteria" units="1/min">0</phagocytosis_rate>
+            #     <phagocytosis_rate name="blood vessel" units="1/min">0</phagocytosis_rate>
+            #     <phagocytosis_rate name="stem" units="1/min">0</phagocytosis_rate>
+            #     <phagocytosis_rate name="differentiated" units="1/min">0</phagocytosis_rate>
+            #     <phagocytosis_rate name="macrophage" units="1/min">0</phagocytosis_rate>
+            #     <phagocytosis_rate name="CD8+ T cell" units="1/min">0</phagocytosis_rate>
+            #     <phagocytosis_rate name="neutrophil" units="1/min">0</phagocytosis_rate>
+            #   </live_phagocytosis_rates>
+            #   <attack_rates>
+            #     <attack_rate name="bacteria" units="1/min">0</attack_rate>
+            #     <attack_rate name="blood vessel" units="1/min">0</attack_rate>
+            #     <attack_rate name="stem" units="1/min">0</attack_rate>
+            #     <attack_rate name="differentiated" units="1/min">0</attack_rate>
+            #     <attack_rate name="macrophage" units="1/min">0</attack_rate>
+            #     <attack_rate name="CD8+ T cell" units="1/min">0</attack_rate>
+            #     <attack_rate name="neutrophil" units="1/min">0</attack_rate>
+            #   </attack_rates>
+            #   <damage_rate units="1/min">0</damage_rate>
+            #   <fusion_rates>
+            #     <fusion_rate name="bacteria" units="1/min">0</fusion_rate>
+            #     <fusion_rate name="blood vessel" units="1/min">0</fusion_rate>
+            #     <fusion_rate name="stem" units="1/min">0</fusion_rate>
+            #     <fusion_rate name="differentiated" units="1/min">0</fusion_rate>
+            #     <fusion_rate name="macrophage" units="1/min">0</fusion_rate>
+            #     <fusion_rate name="CD8+ T cell" units="1/min">0</fusion_rate>
+            #     <fusion_rate name="neutrophil" units="1/min">0</fusion_rate>
+            #   </fusion_rates>
+            # </cell_interactions>
+            # <cell_transformations>
+            #   <transformation_rates>
+            #     <transformation_rate name="bacteria" units="1/min">0</transformation_rate>
+            #     <transformation_rate name="blood vessel" units="1/min">0</transformation_rate>
+            #     <transformation_rate name="stem" units="1/min">0</transformation_rate>
+            #     <transformation_rate name="differentiated" units="1/min">0</transformation_rate>
+            #     <transformation_rate name="macrophage" units="1/min">0</transformation_rate>
+            #     <transformation_rate name="CD8+ T cell" units="1/min">0</transformation_rate>
+            #     <transformation_rate name="neutrophil" units="1/min">0</transformation_rate>
+            #   </transformation_rates>
+            # </cell_transformations>
+
+        interaction_tab = QWidget()
+        glayout = QGridLayout()
+
+        label = QLabel("Phenotype: interaction")
+        label.setStyleSheet("background-color: orange")
+        label.setAlignment(QtCore.Qt.AlignCenter)
+
+            # <cell_interactions>
+            #   <dead_phagocytosis_rate units="1/min">0</dead_phagocytosis_rate>
+            #   <live_phagocytosis_rates>
+            #     <phagocytosis_rate name="bacteria" units="1/min">0</phagocytosis_rate>
+
+        label = QLabel("dead phagocytosis rate")
+        label.setFixedWidth(self.label_width)
+        label.setAlignment(QtCore.Qt.AlignRight)
+        idr = 0
+        glayout.addWidget(label, idr,1, 1,1) # w, row, column, rowspan, colspan
+
+        self.dead_phagocytosis_rate = QLineEdit()
+        self.dead_phagocytosis_rate.textChanged.connect(self.dead_phagocytosis_rate_changed)
+        self.dead_phagocytosis_rate.setValidator(QtGui.QDoubleValidator())
+        glayout.addWidget(self.dead_phagocytosis_rate , idr,2, 1,1) # w, row, column, rowspan, colspan
+
+        units = QLabel("1/min")
+        units.setFixedWidth(self.units_width)
+        units.setAlignment(QtCore.Qt.AlignLeft)
+        # units.setStyleSheet("border: 1px solid black;")
+        glayout.addWidget(units, idr,3, 1,1) # w, row, column, rowspan, colspan
+
+        #------
+        label = QLabel("live phagocytosis rate")
+        label.setFixedWidth(self.label_width)
+        label.setAlignment(QtCore.Qt.AlignRight)
+        idr += 1
+        glayout.addWidget(label, idr,0, 1,1) # w, row, column, rowspan, colspan
+
+        self.live_phagocytosis_dropdown = QComboBox()
+        glayout.addWidget(self.live_phagocytosis_dropdown, idr,1, 1,1) # w, row, column, rowspan, colspan
+        self.live_phagocytosis_dropdown.currentIndexChanged.connect(self.live_phagocytosis_dropdown_changed_cb)  # beware: will be triggered on a ".clear" too
+
+        self.live_phagocytosis_rate = QLineEdit()
+        self.live_phagocytosis_rate.textChanged.connect(self.live_phagocytosis_rate_changed)
+        self.live_phagocytosis_rate.setValidator(QtGui.QDoubleValidator())
+        glayout.addWidget(self.live_phagocytosis_rate , idr,2, 1,1) # w, row, column, rowspan, colspan
+
+        units = QLabel("1/min")
+        units.setFixedWidth(self.units_width)
+        units.setAlignment(QtCore.Qt.AlignLeft)
+        glayout.addWidget(units, idr,3, 1,1) # w, row, column, rowspan, colspan
+
+        #------
+        label = QLabel("attack rate")
+        label.setFixedWidth(self.label_width)
+        label.setAlignment(QtCore.Qt.AlignRight)
+        idr += 1
+        glayout.addWidget(label, idr,0, 1,1) # w, row, column, rowspan, colspan
+
+        self.attack_rate_dropdown = QComboBox()
+        glayout.addWidget(self.attack_rate_dropdown, idr,1, 1,1) # w, row, column, rowspan, colspan
+        self.attack_rate_dropdown.currentIndexChanged.connect(self.attack_rate_dropdown_changed_cb)  # beware: will be triggered on a ".clear" too
+
+        self.attack_rate = QLineEdit()
+        self.attack_rate.textChanged.connect(self.attack_rate_changed)
+        self.attack_rate.setValidator(QtGui.QDoubleValidator())
+        glayout.addWidget(self.attack_rate , idr,2, 1,1) # w, row, column, rowspan, colspan
+
+        units = QLabel("1/min")
+        units.setFixedWidth(self.units_width)
+        units.setAlignment(QtCore.Qt.AlignLeft)
+        glayout.addWidget(units, idr,3, 1,1) # w, row, column, rowspan, colspan
+
+        #------
+        label = QLabel("damage rate")
+        label.setFixedWidth(self.label_width)
+        label.setAlignment(QtCore.Qt.AlignRight)
+        idr += 1
+        glayout.addWidget(label, idr,1, 1,1) # w, row, column, rowspan, colspan
+
+        self.damage_rate = QLineEdit()
+        self.damage_rate.textChanged.connect(self.damage_rate_changed)
+        self.damage_rate.setValidator(QtGui.QDoubleValidator())
+        glayout.addWidget(self.damage_rate , idr,2, 1,1) # w, row, column, rowspan, colspan
+
+        units = QLabel("1/min")
+        units.setFixedWidth(self.units_width)
+        units.setAlignment(QtCore.Qt.AlignLeft)
+        glayout.addWidget(units, idr,3, 1,1) # w, row, column, rowspan, colspan
+
+        #------
+        label = QLabel("fusion rate")
+        label.setFixedWidth(self.label_width)
+        label.setAlignment(QtCore.Qt.AlignRight)
+        idr += 1
+        glayout.addWidget(label, idr,0, 1,1) # w, row, column, rowspan, colspan
+
+        self.fusion_rate_dropdown = QComboBox()
+        glayout.addWidget(self.fusion_rate_dropdown, idr,1, 1,1) # w, row, column, rowspan, colspan
+        self.fusion_rate_dropdown.currentIndexChanged.connect(self.fusion_rate_dropdown_changed_cb)  # beware: will be triggered on a ".clear" too
+
+        self.fusion_rate = QLineEdit()
+        self.fusion_rate.textChanged.connect(self.fusion_rate_changed)
+        self.fusion_rate.setValidator(QtGui.QDoubleValidator())
+        glayout.addWidget(self.fusion_rate , idr,2, 1,1) # w, row, column, rowspan, colspan
+
+        units = QLabel("1/min")
+        units.setFixedWidth(self.units_width)
+        units.setAlignment(QtCore.Qt.AlignLeft)
+        glayout.addWidget(units, idr,3, 1,1) # w, row, column, rowspan, colspan
+
+        #------
+        label = QLabel("transformation rate")
+        label.setFixedWidth(self.label_width)
+        label.setAlignment(QtCore.Qt.AlignRight)
+        idr += 1
+        glayout.addWidget(label, idr,0, 1,1) # w, row, column, rowspan, colspan
+
+        self.cell_transformation_dropdown = QComboBox()
+        glayout.addWidget(self.cell_transformation_dropdown, idr,1, 1,1) # w, row, column, rowspan, colspan
+        self.cell_transformation_dropdown.currentIndexChanged.connect(self.cell_transformation_dropdown_changed_cb)  # beware: will be triggered on a ".clear" too
+
+        self.transformation_rate = QLineEdit()
+        self.transformation_rate.textChanged.connect(self.transformation_rate_changed)
+        self.transformation_rate.setValidator(QtGui.QDoubleValidator())
+        glayout.addWidget(self.transformation_rate , idr,2, 1,1) # w, row, column, rowspan, colspan
+
+        units = QLabel("1/min")
+        units.setFixedWidth(self.units_width)
+        units.setAlignment(QtCore.Qt.AlignLeft)
+        glayout.addWidget(units, idr,3, 1,1) # w, row, column, rowspan, colspan
+
+        #------
+        for idx in range(11):  # rwh: hack solution to align rows
+            blank_line = QLabel("")
+            idr += 1
+            glayout.addWidget(blank_line, idr,0, 1,1) # w, row, column, rowspan, colspan
+
+        #------
+        # vlayout.setVerticalSpacing(10)  # rwh - argh
+        interaction_tab.setLayout(glayout)
+        return interaction_tab
+
+    #--------------------------------------------------------
+    def cell_adhesion_affinity_changed(self,text):
+        # print("cell_adhesion_affinity_changed:  text=",text)
+        self.param_d[self.current_cell_def]['cell_adhesion_affinity'][self.cell_adhesion_affinity_celltype] = text
+
+    #--------------------------------------------------------
+    def dead_phagocytosis_rate_changed(self,text):
+        # print("dead_phagocytosis_rate_changed:  text=",text)
+        self.param_d[self.current_cell_def]['dead_phagocytosis_rate'] = text
+    #--------------------------------------------------------
+    def live_phagocytosis_rate_changed(self,text):
+        # print("live_phagocytosis_rate_changed:  text=",text)
+        self.param_d[self.current_cell_def]['live_phagocytosis_rate'][self.live_phagocytosis_celltype] = text
+    #--------------------------------------------------------
+    def attack_rate_changed(self,text):
+        # print("attack_rate_changed:  text=",text)
+        self.param_d[self.current_cell_def]['attack_rate'][self.attack_rate_celltype] = text
+    #--------------------------------------------------------
+    def damage_rate_changed(self,text):
+        # print("damage_rate_changed:  text=",text)
+        self.param_d[self.current_cell_def]['damage_rate'] = text
+    #--------------------------------------------------------
+    def fusion_rate_changed(self,text):
+        # print("fusion_rate_changed:  text=",text)
+        self.param_d[self.current_cell_def]['fusion_rate'][self.fusion_rate_celltype] = text
+    #--------------------------------------------------------
+    def transformation_rate_changed(self,text):
+        # print("transformation_rate_changed:  text=",text)
+        self.param_d[self.current_cell_def]['transformation_rate'][self.transformation_rate_celltype] = text
+
+
+    #--------------------------------------------------------
     def create_molecular_tab(self):
         label = QLabel("Phenotype: molecular")
         label.setStyleSheet("background-color: orange")
         label.setAlignment(QtCore.Qt.AlignCenter)
         self.vbox.addWidget(label)
+
+
+    def choose_bnd_file(self):
+        file , check = QFileDialog.getOpenFileName(None, "Please select a MaBoSS BND file",
+                                               "", "MaBoSS BND Files (*.bnd)")
+        if check:
+            self.physiboss_bnd_file.setText(file)
+            
+    def choose_cfg_file(self):
+        file , check = QFileDialog.getOpenFileName(None, "Please select a MaBoSS CFG file",
+                                               "", "MaBoSS CFG Files (*.cfg)")
+        if check:
+            self.physiboss_cfg_file.setText(file)
+
+    def physiboss_bnd_filename_changed(self, text):
+        self.param_d[self.current_cell_def]["intracellular"]['bnd_filename'] = text
+    
+    def physiboss_cfg_filename_changed(self, text):
+        self.param_d[self.current_cell_def]["intracellular"]['cfg_filename'] = text
+    
+    def physiboss_time_step_changed(self, text):
+        self.param_d[self.current_cell_def]["intracellular"]['time_step'] = text
+    
+    def physiboss_scaling_changed(self, text):
+        self.param_d[self.current_cell_def]["intracellular"]['scaling'] = text
+    
+    def physiboss_time_stochasticity_changed(self, text):
+        self.param_d[self.current_cell_def]["intracellular"]['time_stochasticity'] = text
+    
+    def physiboss_clicked_add_initial_value(self):
+        self.physiboss_add_initial_values()
+        self.param_d[self.current_cell_def]["intracellular"]["initial_values"].append((None, None))
+
+    def physiboss_add_initial_values(self):
+
+        initial_states_editor = QHBoxLayout()
+        initial_states_node = QLineEdit()
+        initial_states_value = QLineEdit()
+        initial_states_remove = QPushButton("Delete")
+
+        id = len(self.physiboss_initial_states)
+        initial_states_node.textChanged.connect(lambda text: self.physiboss_initial_value_node_changed(id, text))
+        initial_states_value.textChanged.connect(lambda text: self.physiboss_initial_value_value_changed(id, text))
+        initial_states_remove.clicked.connect(lambda: self.physiboss_clicked_remove_initial_values(id))
+
+        initial_states_editor.addWidget(initial_states_node)
+        initial_states_editor.addWidget(initial_states_value)
+        initial_states_editor.addWidget(initial_states_remove)
+
+        self.physiboss_initial_states_layout.addLayout(initial_states_editor)
+        self.physiboss_initial_states.append((initial_states_node, initial_states_value, initial_states_remove, initial_states_editor))
+
+    def physiboss_clicked_remove_initial_values(self, i):
+        self.physiboss_remove_initial_values(i)
+        del self.param_d[self.current_cell_def]["intracellular"]["initial_values"][i]
+
+    def physiboss_remove_initial_values(self, i):
+        self.physiboss_initial_states[i][0].textChanged.disconnect()
+        self.physiboss_initial_states[i][0].deleteLater()
+        self.physiboss_initial_states[i][1].textChanged.disconnect()
+        self.physiboss_initial_states[i][1].deleteLater()
+        self.physiboss_initial_states[i][2].clicked.disconnect()
+        self.physiboss_initial_states[i][2].deleteLater()
+        self.physiboss_initial_states[i][3].deleteLater()
+        del self.physiboss_initial_states[i]
+        
+        # Here we should remap the clicked method to have the proper id
+        for i, initial_state in enumerate(self.physiboss_initial_states):
+            node, value, button, _ = initial_state
+            node.textChanged.disconnect()
+            node.textChanged.connect(lambda text: self.physiboss_initial_value_node_changed(i, text))
+            value.textChanged.disconnect()
+            value.textChanged.connect(lambda text: self.physiboss_initial_value_value_changed(i, text))
+            button.clicked.disconnect()
+            button.clicked.connect(lambda: self.physiboss_clicked_remove_initial_values(i))
+
+    def physiboss_clear_initial_values(self):
+        for i, _ in reversed(list(enumerate(self.physiboss_initial_states))):
+            self.physiboss_remove_initial_values(i)
+    
+    def physiboss_initial_value_node_changed(self, i, text):
+        self.param_d[self.current_cell_def]["intracellular"]["initial_values"][i] = (text, self.param_d[self.current_cell_def]["intracellular"]["initial_values"][i][1])
+
+    def physiboss_initial_value_value_changed(self, i, text):
+        self.param_d[self.current_cell_def]["intracellular"]["initial_values"][i] = (self.param_d[self.current_cell_def]["intracellular"]["initial_values"][i][0], text)
+    
+    def physiboss_clicked_add_mutant(self):
+        self.physiboss_add_mutant()
+        self.param_d[self.current_cell_def]["intracellular"]["mutants"].append(("", ""))
+
+    def physiboss_add_mutant(self):
+
+        mutants_editor = QHBoxLayout()
+        mutants_node = QLineEdit()
+        mutants_value = QLineEdit()
+        mutants_remove = QPushButton("Delete")
+        id = len(self.physiboss_mutants)
+        mutants_node.textChanged.connect(lambda text: self.physiboss_mutants_node_changed(id, text))
+        mutants_value.textChanged.connect(lambda text: self.physiboss_mutants_value_changed(id, text))
+        mutants_remove.clicked.connect(lambda: self.physiboss_clicked_remove_mutant(id))
+
+        mutants_editor.addWidget(mutants_node)
+        mutants_editor.addWidget(mutants_value)
+        mutants_editor.addWidget(mutants_remove)
+        self.physiboss_mutants_layout.addLayout(mutants_editor)
+        self.physiboss_mutants.append((mutants_node, mutants_value, mutants_remove, mutants_editor))
+
+    def physiboss_clicked_remove_mutant(self, i):
+        self.physiboss_remove_mutant(i)
+        del self.param_d[self.current_cell_def]["intracellular"]["mutants"][i]
+
+    def physiboss_remove_mutant(self, i):
+        self.physiboss_mutants[i][0].textChanged.disconnect()
+        self.physiboss_mutants[i][0].deleteLater()
+        self.physiboss_mutants[i][1].textChanged.disconnect()
+        self.physiboss_mutants[i][1].deleteLater()
+        self.physiboss_mutants[i][2].clicked.disconnect()
+        self.physiboss_mutants[i][2].deleteLater()
+        self.physiboss_mutants[i][3].deleteLater()
+        del self.physiboss_mutants[i]
+      
+        # Here we should remap the clicked method to have the proper id
+        for i, mutant in enumerate(self.physiboss_mutants):
+            name, value, button, _ = mutant
+            name.textChanged.disconnect()
+            name.textChanged.connect(lambda text: self.physiboss_mutants_node_changed(i, text))
+            value.textChanged.disconnect()
+            value.textChanged.connect(lambda text: self.physiboss_mutants_value_changed(i, text))
+            button.clicked.disconnect()
+            button.clicked.connect(lambda: self.physiboss_clicked_remove_mutant(i))
+
+    def physiboss_clear_mutants(self):
+        for i, _ in reversed(list(enumerate(self.physiboss_mutants))):
+            self.physiboss_remove_mutant(i)
+    
+    def physiboss_mutants_node_changed(self, i, text):
+        self.param_d[self.current_cell_def]["intracellular"]["mutants"][i] = (text, self.param_d[self.current_cell_def]["intracellular"]["mutants"][i][1])
+
+    def physiboss_mutants_value_changed(self, i, text):
+        self.param_d[self.current_cell_def]["intracellular"]["mutants"][i] = (self.param_d[self.current_cell_def]["intracellular"]["mutants"][i][0], text)
+
+    def physiboss_clicked_add_parameter(self):
+        self.physiboss_add_parameter()
+        self.param_d[self.current_cell_def]["intracellular"]["parameters"].append(("", ""))
+
+    def physiboss_add_parameter(self):
+
+        parameters_editor = QHBoxLayout()
+        parameters_node = QLineEdit()
+        parameters_value = QLineEdit()
+        parameters_remove = QPushButton("Delete")
+       
+        id = len(self.physiboss_parameters)
+        parameters_node.textChanged.connect(lambda text: self.physiboss_parameters_node_changed(id, text))
+        parameters_value.textChanged.connect(lambda text: self.physiboss_parameters_value_changed(id, text))
+        parameters_remove.clicked.connect(lambda: self.physiboss_clicked_remove_parameter(id))
+
+        parameters_editor.addWidget(parameters_node)
+        parameters_editor.addWidget(parameters_value)
+        parameters_editor.addWidget(parameters_remove)
+        self.physiboss_parameters_layout.addLayout(parameters_editor)
+        self.physiboss_parameters.append((parameters_node, parameters_value, parameters_remove, parameters_editor))
+
+    def physiboss_clicked_remove_parameter(self, i):
+        self.physiboss_remove_parameter(i)
+        del self.param_d[self.current_cell_def]["intracellular"]["parameters"][i]
+
+    def physiboss_remove_parameter(self, i):
+        self.physiboss_parameters[i][0].textChanged.disconnect()
+        self.physiboss_parameters[i][0].deleteLater()
+        self.physiboss_parameters[i][1].textChanged.disconnect()
+        self.physiboss_parameters[i][1].deleteLater()
+        self.physiboss_parameters[i][2].clicked.disconnect()
+        self.physiboss_parameters[i][2].deleteLater()
+        self.physiboss_parameters[i][3].deleteLater()
+        del self.physiboss_parameters[i]
+
+        # Here we should remap the clicked method to have the proper id
+        for i, parameter in enumerate(self.physiboss_parameters):
+            name, value, button, _ = parameter
+            name.textChanged.disconnect()
+            name.textChanged.connect(lambda text: self.physiboss_parameters_node_changed(i, text))
+            value.textChanged.disconnect()
+            value.textChanged.connect(lambda text: self.physiboss_parameters_value_changed(i, text))
+            button.clicked.disconnect()
+            button.clicked.connect(lambda: self.physiboss_clicked_remove_parameter(i))
+        
+    def physiboss_clear_parameters(self):
+        for i, _ in reversed(list(enumerate(self.physiboss_parameters))):
+            self.physiboss_remove_parameter(i)
+
+    def physiboss_parameters_node_changed(self, i, text):
+        self.param_d[self.current_cell_def]["intracellular"]["parameters"][i] = (text, self.param_d[self.current_cell_def]["intracellular"]["parameters"][i][1])
+
+    def physiboss_parameters_value_changed(self, i, text):
+        self.param_d[self.current_cell_def]["intracellular"]["parameters"][i] = (self.param_d[self.current_cell_def]["intracellular"]["parameters"][i][0], text)
+
+    
+    def intracellular_type_changed(self, index):
+
+        self.physiboss_boolean_frame.hide()
+        if index == 1:
+            # print("PhysiBoSS")
+            if self.param_d[self.current_cell_def]["intracellular"] is None:
+                self.param_d[self.current_cell_def]["intracellular"] = {"type": "maboss"}
+                
+            if 'initial_values' not in self.param_d[self.current_cell_def]["intracellular"].keys():
+                self.param_d[self.current_cell_def]["intracellular"]["initial_values"] = []
+                self.physiboss_clear_initial_values()
+            
+            if 'mutants' not in self.param_d[self.current_cell_def]["intracellular"].keys():
+                self.param_d[self.current_cell_def]["intracellular"]["mutants"] = []
+                self.physiboss_clear_mutants()
+
+            if 'parameters' not in self.param_d[self.current_cell_def]["intracellular"].keys():
+                self.param_d[self.current_cell_def]["intracellular"]["parameters"] = []
+                self.physiboss_clear_parameters()
+
+            if self.physiboss_time_step.text() == "":
+                self.physiboss_time_step.setText("12.0")
+
+            if self.physiboss_time_stochasticity.text() == "":
+                self.physiboss_time_stochasticity.setText("1.0")
+
+            if self.physiboss_scaling.text() == "":
+                self.physiboss_scaling.setText("1.0")
+                
+            self.physiboss_boolean_frame.show()
+        elif index == 2:
+            print("SBML ODEs")
+        elif index == 3:
+            print("FBA")
+        else:
+            print("Unkown intracellular type")
+        
+    #--------------------------------------------------------
+    def create_intracellular_tab(self):
+        intracellular_tab = QWidget()
+        glayout = QVBoxLayout()
+
+        label = QLabel("Phenotype: intracellular")
+        label.setStyleSheet("background-color: orange")
+        label.setAlignment(QtCore.Qt.AlignCenter)
+
+        type_hbox = QHBoxLayout()
+
+        type_label = QLabel("Type")
+        type_hbox.addWidget(type_label)
+
+        self.intracellular_type_dropdown = QComboBox()
+        self.intracellular_type_dropdown.setFixedWidth(300)
+        self.intracellular_type_dropdown.currentIndexChanged.connect(self.intracellular_type_changed)
+        self.intracellular_type_dropdown.addItem("none")
+        self.intracellular_type_dropdown.addItem("boolean")
+        self.intracellular_type_dropdown.addItem("odes")
+        self.intracellular_type_dropdown.addItem("fba")
+        self.intracellular_type_dropdown.setEnabled(False)
+        type_hbox.addWidget(self.intracellular_type_dropdown)
+
+        # glayout.addLayout(type_hbox, idr,0, 1,1) # w, row, column, rowspan, colspan
+        glayout.addLayout(type_hbox)#, idr,0, 1,1) # w, row, column, rowspan, colspan
+
+
+        # self.boolean_frame = QFrame()
+        ly = QVBoxLayout()
+        self.physiboss_boolean_frame.setLayout(ly)
+
+        bnd_hbox = QHBoxLayout()
+
+        bnd_label = QLabel("MaBoSS BND file")
+        bnd_hbox.addWidget(bnd_label)
+
+        self.physiboss_bnd_file = QLineEdit()
+        self.physiboss_bnd_file.textChanged.connect(self.physiboss_bnd_filename_changed)
+        bnd_hbox.addWidget(self.physiboss_bnd_file)
+
+
+        bnd_button = QPushButton("Choose BND file")
+        bnd_button.clicked.connect(self.choose_bnd_file)
+
+        bnd_hbox.addWidget(bnd_button)
+        ly.addLayout(bnd_hbox)
+
+        cfg_hbox = QHBoxLayout()
+
+        cfg_label = QLabel("MaBoSS CFG file")
+        cfg_hbox.addWidget(cfg_label)
+
+        self.physiboss_cfg_file = QLineEdit()
+        self.physiboss_cfg_file.textChanged.connect(self.physiboss_cfg_filename_changed)
+        cfg_hbox.addWidget(self.physiboss_cfg_file)
+
+        cfg_button = QPushButton("Choose CFG file")
+        cfg_button.clicked.connect(self.choose_cfg_file)
+
+        cfg_hbox.addWidget(cfg_button)
+        ly.addLayout(cfg_hbox)
+
+        time_step_hbox = QHBoxLayout()
+
+        time_step_label = QLabel("Time step")
+        time_step_hbox.addWidget(time_step_label)
+
+        self.physiboss_time_step = QLineEdit()
+        self.physiboss_time_step.textChanged.connect(self.physiboss_time_step_changed)
+        # Commenting it because for french, we need to use a comma, which then get written in the XML and might cause problems
+        # self.physiboss_time_step.setValidator(QtGui.QDoubleValidator())
+
+        time_step_hbox.addWidget(self.physiboss_time_step)
+
+        ly.addLayout(time_step_hbox)
+
+        scaling_hbox = QHBoxLayout()
+
+        scaling_label = QLabel("Scaling")
+        scaling_hbox.addWidget(scaling_label)
+
+        self.physiboss_scaling = QLineEdit()
+        self.physiboss_scaling.textChanged.connect(self.physiboss_scaling_changed)
+        # Commenting it because for french, we need to use a comma, which then get written in the XML and might cause problems
+        # self.physiboss_scaling.setValidator(QtGui.QDoubleValidator())
+
+        scaling_hbox.addWidget(self.physiboss_scaling)
+
+        ly.addLayout(scaling_hbox)
+
+        time_stochasticity_hbox = QHBoxLayout()
+
+        time_stochasticity_label = QLabel("Time stochasticity")
+        time_stochasticity_hbox.addWidget(time_stochasticity_label)
+
+        self.physiboss_time_stochasticity = QLineEdit()
+        self.physiboss_time_stochasticity.textChanged.connect(self.physiboss_time_stochasticity_changed)
+        # Commenting it because for french, we need to use a comma, which then get written in the XML and might cause problems
+        # self.physiboss_time_stochasticity.setValidator(QtGui.QDoubleValidator())
+
+        time_stochasticity_hbox.addWidget(self.physiboss_time_stochasticity)
+
+        ly.addLayout(time_stochasticity_hbox)
+
+
+        initial_states_groupbox = QGroupBox("Initial states")
+        self.physiboss_initial_states_layout = QVBoxLayout()
+        initial_states_labels = QHBoxLayout()
+
+        initial_states_node_label = QLabel("Node")
+        initial_states_value_label = QLabel("Value")
+        initial_states_labels.addWidget(initial_states_node_label)
+        initial_states_labels.addWidget(initial_states_value_label)
+        self.physiboss_initial_states_layout.addLayout(initial_states_labels)
+
+        self.physiboss_initial_states = []
+        initial_states_groupbox.setLayout(self.physiboss_initial_states_layout)
+
+        ly.addWidget(initial_states_groupbox)
+        
+        initial_states_addbutton = QPushButton("Add new initial value")
+        initial_states_addbutton.clicked.connect(self.physiboss_clicked_add_initial_value)
+        ly.addWidget(initial_states_addbutton)
+
+        
+        mutants_groupbox = QGroupBox("Mutants")
+        self.physiboss_mutants_layout = QVBoxLayout()
+        mutants_labels = QHBoxLayout()
+
+        mutants_node_label = QLabel("Node")
+        mutants_value_label = QLabel("Value")
+        mutants_labels.addWidget(mutants_node_label)
+        mutants_labels.addWidget(mutants_value_label)
+        self.physiboss_mutants_layout.addLayout(mutants_labels)
+        mutants_groupbox.setLayout(self.physiboss_mutants_layout)
+        
+        self.physiboss_mutants = []
+        ly.addWidget(mutants_groupbox)
+ 
+        mutants_addbutton = QPushButton("Add new mutant")
+        mutants_addbutton.clicked.connect(self.physiboss_clicked_add_mutant)
+        ly.addWidget(mutants_addbutton)
+
+        parameters_groupbox = QGroupBox("Parameters")
+
+        self.physiboss_parameters_layout = QVBoxLayout()
+        parameters_labels = QHBoxLayout()
+
+        parameters_node_label = QLabel("Name")
+        parameters_value_label = QLabel("Value")
+        parameters_labels.addWidget(parameters_node_label)
+        parameters_labels.addWidget(parameters_value_label)
+        self.physiboss_parameters_layout.addLayout(parameters_labels)
+        parameters_groupbox.setLayout(self.physiboss_parameters_layout)
+
+        self.physiboss_parameters = []
+        ly.addWidget(parameters_groupbox)
+
+        parameters_addbutton = QPushButton("Add new parameter")
+        parameters_addbutton.clicked.connect(self.physiboss_clicked_add_parameter)
+        ly.addWidget(parameters_addbutton)
+
+        glayout.addWidget(self.physiboss_boolean_frame)
+        glayout.addStretch()
+
+        intracellular_tab.setLayout(glayout)
+        return intracellular_tab
 
     #--------------------------------------------------------
     # The following (text-based widgets) were (originally) auto-generated by 
@@ -2664,10 +3403,50 @@ class CellDef(QWidget):
     # insert callbacks for QCheckBoxes
     def motility_enabled_cb(self,bval):
         self.param_d[self.current_cell_def]['motility_enabled'] = bval
+
     def motility_use_2D_cb(self,bval):
         self.param_d[self.current_cell_def]['motility_use_2D'] = bval
+
     def chemotaxis_enabled_cb(self,bval):
         self.param_d[self.current_cell_def]['motility_chemotaxis'] = bval
+        if bval:
+            self.motility_substrate_dropdown.setEnabled(True)
+            self.chemotaxis_direction_towards.setEnabled(True)
+            self.chemotaxis_direction_against.setEnabled(True)
+
+            self.advanced_chemotaxis_enabled.setChecked(False)
+            self.motility2_substrate_dropdown.setEnabled(False)
+            self.chemo_sensitivity.setEnabled(False)
+            self.normalize_each_gradient.setEnabled(False)
+
+    def advanced_chemotaxis_enabled_cb(self,bval):
+        self.param_d[self.current_cell_def]['motility_advanced_chemotaxis'] = bval
+        if bval:
+            self.motility_substrate_dropdown.setEnabled(False)
+            self.chemotaxis_direction_towards.setEnabled(False)
+            self.chemotaxis_direction_against.setEnabled(False)
+
+            self.chemotaxis_enabled.setChecked(False)
+            self.motility2_substrate_dropdown.setEnabled(True)
+            self.chemo_sensitivity.setEnabled(True)
+            self.normalize_each_gradient.setEnabled(True)
+
+    def normalize_each_gradient_cb(self,bval):
+        self.param_d[self.current_cell_def]['normalize_each_gradient'] = bval
+
+
+    def chemo_sensitivity_changed(self, text):
+        print("----- chemo_sensitivity_changed() = ",text)
+        subname = self.param_d[self.current_cell_def]['motility_advanced_chemotaxis_substrate']
+        if subname == "":
+            print(" ... but motility_advanced_chemotaxis_substrate is empty string, so return!")
+            return
+        print("----- chemo_sensitivity_changed(): subname = ",subname)
+        print("       keys() = ",self.param_d[self.current_cell_def].keys())
+        self.param_d[self.current_cell_def]['chemotactic_sensitivity'][subname] = text
+        print("     chemotactic_sensitivity (dict)= ",self.param_d[self.current_cell_def]['chemotactic_sensitivity'])
+        # if 'chemo_sensitivity' in self.param_d[self.current_cell_def].keys():
+            # self.param_d[self.current_cell_def]['chemo_sensitivity'][subname] = text
 
     # --- secretion
     def secretion_rate_changed(self, text):
@@ -2694,7 +3473,7 @@ class CellDef(QWidget):
         # print("custom_data_value_changed(): vname = ", vname)
         if len(vname) == 0:
             return
-        print("\n THIS! ~~~~~~~~~~~ cell_def_tab.py: custom_data_value_changed(): vname = ",vname,", val = ", text)
+        # print("\n THIS! ~~~~~~~~~~~ cell_def_tab.py: custom_data_value_changed(): vname = ",vname,", val = ", text)
         # populate: self.param_d[cell_def_name]['custom_data'] =  {'cvar1': '42.0', 'cvar2': '0.42', 'cvar3': '0.042'}
         # self.param_d[self.current_cell_def]['custom_data']['cvar1'] = text
         self.param_d[self.current_cell_def]['custom_data'][vname] = text
@@ -3099,6 +3878,109 @@ class CellDef(QWidget):
     #     # self.text.setText(random.choice(self.hello))
     #     pass
 
+    #--------------------------------------------------------
+    def create_rules_tab(self):
+        rules_tab = QWidget()
+        glayout = QGridLayout()
+
+        label = QLabel("Phenotype: rules")
+        label.setStyleSheet("background-color: orange")
+        label.setAlignment(QtCore.Qt.AlignCenter)
+
+        #---
+        idr = 1
+        glayout.addWidget(QHLine(), idr,0, 1,2) # w, row, column, rowspan, colspan
+
+        # label = QLabel("Chemotaxis")
+        # label.setFixedWidth(200)
+        # label.setAlignment(QtCore.Qt.AlignCenter)
+        # label.setStyleSheet('background-color: yellow')
+        # idr += 1
+        # glayout.addWidget(label, idr,0, 1,1) # w, row, column, rowspan, colspan
+
+        # self.chemotaxis_enabled = QCheckBox("enabled")
+        # self.chemotaxis_enabled.clicked.connect(self.chemotaxis_enabled_cb)
+        # glayout.addWidget(self.chemotaxis_enabled, idr,1, 1,1) # w, row, column, rowspan, colspan
+
+        self.rules_type_dropdown = QComboBox()
+        self.rules_type_dropdown.addItem("signal_response")   # 0 -> 0
+        # self.motility_substrate_dropdown.setFixedWidth(240)
+        idr += 1
+        glayout.addWidget(self.rules_type_dropdown, idr,0, 1,1) # w, row, column, rowspan, colspan
+        # self.rules_type_dropdown.currentIndexChanged.connect(self.rules_type_changed_cb)  # beware: will be triggered on a ".clear" too
+        # self.motility_substrate_dropdown.addItem("oxygen")
+
+        # self.chemotaxis_direction_positive = QCheckBox("up gradient (+1)")
+        # glayout.addWidget(self.chemotaxis_direction_positive, idr,1, 1,1) # w, row, column, rowspan, colspan
+
+        self.response_type_dropdown = QComboBox()
+        self.response_type_dropdown.addItem("Hill")   # 0 -> 0
+        idr += 1
+        glayout.addWidget(self.response_type_dropdown, idr,0, 1,1) # w, row, column, rowspan, colspan
+
+        self.hill_response_increase = QRadioButton("increase")
+        # self.chemotaxis_direction_towards.clicked.connect(self.chemotaxis_direction_cb)
+        # glayout.addLayout(self.chemotaxis_direction_towards, idr,1, 1,1) # w, row, column, rowspan, colspan
+
+        self.hill_response_decrease = QRadioButton("decrease")
+        # self.chemotaxis_direction_against.clicked.connect(self.chemotaxis_direction_cb)
+        # glayout.addWidget(self.chemotaxis_direction_against, idr,2, 1,1) # w, row, column, rowspan, colspan
+
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.hill_response_increase)
+        hbox.addWidget(self.hill_response_decrease)
+        glayout.addLayout(hbox, idr,1, 1,1) # w, row, column, rowspan, colspan
+
+
+        #---
+        label = QLabel("max_response")
+        label.setFixedWidth(self.label_width)
+        label.setAlignment(QtCore.Qt.AlignRight)
+        idr += 1
+        glayout.addWidget(label, idr,0, 1,1) # w, row, column, rowspan, colspan
+
+        self.max_response = QLineEdit()
+        # self.max_response.textChanged.connect(self.volume_fluid_fraction_changed)
+        self.max_response.setValidator(QtGui.QDoubleValidator())
+        glayout.addWidget(self.max_response, idr,1, 1,1) # w, row, column, rowspan, colspan
+
+        #---
+        label = QLabel("hill_power")
+        label.setFixedWidth(self.label_width)
+        label.setAlignment(QtCore.Qt.AlignRight)
+        idr += 1
+        glayout.addWidget(label, idr,0, 1,1) # w, row, column, rowspan, colspan
+
+        self.hill_power = QLineEdit()
+        # self.hill_power.textChanged.connect(self.volume_fluid_fraction_changed)
+        self.hill_power.setValidator(QtGui.QDoubleValidator())
+        glayout.addWidget(self.hill_power, idr,1, 1,1) # w, row, column, rowspan, colspan
+        
+        #---
+        label = QLabel("half_max")
+        label.setFixedWidth(self.label_width)
+        label.setAlignment(QtCore.Qt.AlignRight)
+        idr += 1
+        glayout.addWidget(label, idr,0, 1,1) # w, row, column, rowspan, colspan
+
+        self.half_max = QLineEdit()
+        # self.half_max.textChanged.connect(self.volume_fluid_fraction_changed)
+        self.half_max.setValidator(QtGui.QDoubleValidator())
+        glayout.addWidget(self.half_max, idr,1, 1,1) # w, row, column, rowspan, colspan
+
+
+        #------
+        for idx in range(11):  # rwh: hack solution to align rows
+            blank_line = QLabel("")
+            idr += 1
+            glayout.addWidget(blank_line, idr,0, 1,1) # w, row, column, rowspan, colspan
+
+        #------
+        # vlayout.setVerticalSpacing(10)  # rwh - argh
+        rules_tab.setLayout(glayout)
+        return rules_tab
+
+
 
     #--------------------------------------------------------
     # @QtCore.Slot()
@@ -3124,9 +4006,127 @@ class CellDef(QWidget):
         if idx == -1:
             return
 
+    def motility2_substrate_changed_cb(self, idx):  # dropdown widget
+        print('------ motility2_substrate_changed_cb(): idx = ',idx)
+        # self.advanced_chemotaxis_enabled_cb(self.param_d[self.current_cell_def]["motility_advanced_chemotaxis"])
+
+        subname = self.motility2_substrate_dropdown.currentText()
+        print("   text (subname) = ",subname)
+        if subname == '':
+            print("   subname is empty, return!")
+            return
+        if subname not in self.param_d[self.current_cell_def]['chemotactic_sensitivity'].keys():
+            print("   subname is empty, return!")
+            return
+
+        self.param_d[self.current_cell_def]['motility_advanced_chemotaxis_substrate'] = subname  # rwh - why have this??
+        print("    motility_advanced_chemotaxis_substrate= ",self.param_d[self.current_cell_def]['motility_advanced_chemotaxis_substrate'])
+        # self.param_d[cell_def_name]["motility_chemotaxis_idx"] = idx
+
+        # print(self.chemotactic_sensitivity_dict[val])
+        print("   chemotactic_sensitivity = ",self.param_d[self.current_cell_def]['chemotactic_sensitivity'])
+        newval = self.param_d[self.current_cell_def]['chemotactic_sensitivity'][subname]
+        # print(" .  newval= ",newval)
+        self.chemo_sensitivity.setText(newval)
+
+        if idx == -1:
+            return
+
+    #---- in mechanics subtab
+    def cell_adhesion_affinity_dropdown_changed_cb(self, idx):
+        # print('\n------ cell_adhesion_affinity_dropdown_changed_cb(): idx = ',idx)
+        # self.advanced_chemotaxis_enabled_cb(self.param_d[self.current_cell_def]["motility_advanced_chemotaxis"])
+
+        celltype_name = self.cell_adhesion_affinity_dropdown.currentText()
+        # self.param_d[self.current_cell_def]['cell_adhesion_affinity_celltype'] = celltype_name
+        self.cell_adhesion_affinity_celltype = celltype_name
+        # print("   self.cell_adhesion_affinity_celltype = ",celltype_name)
+
+        # print("(dropdown) cell_adhesion_affinity= ",self.param_d[self.current_cell_def]["cell_adhesion_affinity"])
+        if self.cell_adhesion_affinity_celltype in self.param_d[self.current_cell_def]["cell_adhesion_affinity"].keys():
+            self.cell_adhesion_affinity.setText(self.param_d[self.current_cell_def]["cell_adhesion_affinity"][self.cell_adhesion_affinity_celltype])
+        else:
+            self.cell_adhesion_affinity.setText(self.default_affinity)
+
+        if idx == -1:
+            return
+
+    #---- in interactions subtab
+    def live_phagocytosis_dropdown_changed_cb(self, idx):
+        # print('\n------ live_phagocytosis_dropdown_changed_cb(): idx = ',idx)
+        # self.advanced_chemotaxis_enabled_cb(self.param_d[self.current_cell_def]["motility_advanced_chemotaxis"])
+
+        celltype_name = self.live_phagocytosis_dropdown.currentText()
+        # self.param_d[self.current_cell_def]['live_phagocytosis_celltype'] = celltype_name
+        self.live_phagocytosis_celltype = celltype_name
+        # print("   self.live_phagocytosis_celltype = ",celltype_name)
+
+        if self.live_phagocytosis_celltype in self.param_d[self.current_cell_def]["live_phagocytosis_rate"].keys():
+            self.live_phagocytosis_rate.setText(self.param_d[self.current_cell_def]["live_phagocytosis_rate"][self.live_phagocytosis_celltype])
+        else:
+            self.live_phagocytosis_rate.setText(self.default_sval)
+        # self.live_phagocytosis_rate.setText(self.param_d[self.current_cell_def]["live_phagocytosis_rate"]['differentiated'])
+        # print("self.param_d[self.current_cell_def]['live_phagocytosis_rate'] = ",self.param_d[self.current_cell_def]['live_phagocytosis_rate'])
+
+        if idx == -1:
+            return
+
+    def attack_rate_dropdown_changed_cb(self, idx):
+        # print('------ attack_rate_dropdown_changed_cb(): idx = ',idx)
+        # self.advanced_chemotaxis_enabled_cb(self.param_d[self.current_cell_def]["motility_advanced_chemotaxis"])
+
+        celltype_name = self.attack_rate_dropdown.currentText()
+        # self.param_d[self.current_cell_def]['attack_rate_celltype'] = celltype_name
+        self.attack_rate_celltype = celltype_name
+        # print("   self.attack_rate_celltype = ",celltype_name)
+
+        if self.attack_rate_celltype in self.param_d[self.current_cell_def]["attack_rate"].keys():
+            self.attack_rate.setText(self.param_d[self.current_cell_def]["attack_rate"][self.attack_rate_celltype])
+        else:
+            self.attack_rate.setText(self.default_sval)
+
+        if idx == -1:
+            return
+
+    def fusion_rate_dropdown_changed_cb(self, idx):
+        # print('------ fusion_rate_dropdown_changed_cb(): idx = ',idx)
+        # self.advanced_chemotaxis_enabled_cb(self.param_d[self.current_cell_def]["motility_advanced_chemotaxis"])
+
+        celltype_name = self.fusion_rate_dropdown.currentText()
+        # self.param_d[self.current_cell_def]['fusion_rate_celltype'] = celltype_name
+        self.fusion_rate_celltype = celltype_name
+        # print("   self.fusion_rate_celltype = ",celltype_name)
+
+        if self.fusion_rate_celltype in self.param_d[self.current_cell_def]["fusion_rate"].keys():
+            self.fusion_rate.setText(self.param_d[self.current_cell_def]["fusion_rate"][self.fusion_rate_celltype])
+        else:
+            self.fusion_rate.setText(self.default_sval)
+
+        if idx == -1:
+            return
+
+    def cell_transformation_dropdown_changed_cb(self, idx):
+        # print('------ cell_transformation_dropdown_changed_cb(): idx = ',idx)
+        # self.advanced_chemotaxis_enabled_cb(self.param_d[self.current_cell_def]["motility_advanced_chemotaxis"])
+
+        celltype_name = self.cell_transformation_dropdown.currentText()
+        # self.param_d[self.current_cell_def]['transformation_rate_celltype'] = celltype_name
+        self.transformation_rate_celltype = celltype_name
+        # print("   self.transformation_rate_celltype= ",celltype_name)
+
+        if self.transformation_rate_celltype in self.param_d[self.current_cell_def]["transformation_rate"].keys():
+            self.transformation_rate.setText(self.param_d[self.current_cell_def]["transformation_rate"][self.transformation_rate_celltype])
+        else:
+            self.transformation_rate.setText(self.default_sval)
+
+        if idx == -1:
+            return
+
+
+    #---------------------------
     # @QtCore.Slot()
     def secretion_substrate_changed_cb(self, idx):
-        print('------ secretion_substrate_changed_cb(): idx = ',idx)
+        # print('------ secretion_substrate_changed_cb(): idx = ',idx)
         self.current_secretion_substrate = self.secretion_substrate_dropdown.currentText()
         # print("    self.current_secretion_substrate = ",self.current_secretion_substrate)
         if idx == -1:
@@ -3163,23 +4163,23 @@ class CellDef(QWidget):
     def cycle_phase_transition_cb(self):
         # rb1.toggled.connect(self.updateLabel)(self, idx_choice):
         # print('self.cycle_rows_vbox.count()=', self.cycle_rows_vbox.count())
-        print('cycle_phase_transition_cb: self.stacked_cycle.count()=', self.stacked_cycle.count())
+        # print('cycle_phase_transition_cb: self.stacked_cycle.count()=', self.stacked_cycle.count())
 
         radioBtn = self.sender()
-        if radioBtn.isChecked():
-            print("--------- ",radioBtn.text())
+        # if radioBtn.isChecked():
+        #     print("--------- ",radioBtn.text())
 
-        print("self.cycle_dropdown.currentText() = ",self.cycle_dropdown.currentText())
+        # print("self.cycle_dropdown.currentText() = ",self.cycle_dropdown.currentText())
         # print("self.cycle_dropdown.currentIndex() = ",self.cycle_dropdown.currentIndex())
 
         # self.cycle_rows_vbox.clear()
         # if radioBtn.text().find("duration"):
         if "duration" in radioBtn.text():
-            print('cycle_phase_transition_cb: --> duration')
+            # print('cycle_phase_transition_cb: --> duration')
             self.cycle_duration_flag = True
             self.customize_cycle_choices()
         else:  # transition rates
-            print('cycle_phase_transition_cb: NOT duration')
+            # print('cycle_phase_transition_cb: NOT duration')
             self.cycle_duration_flag = False
             self.customize_cycle_choices()
             # pass
@@ -3197,7 +4197,7 @@ class CellDef(QWidget):
     # different cycle model is chosen from the dropdown combobox.
     def customize_cycle_choices(self):
 
-        print("-- customize_cycle_choices(): index= ",self.cycle_dropdown.currentIndex())
+        # print("-- customize_cycle_choices(): index= ",self.cycle_dropdown.currentIndex())
 
         if self.cycle_duration_flag:  # specifying duration times (radio button)
             if self.cycle_dropdown.currentIndex() == 0:
@@ -3230,11 +4230,11 @@ class CellDef(QWidget):
 
 
     def chemotaxis_direction_cb(self):
-        print('chemotaxis_direction_cb: ')
+        # print('chemotaxis_direction_cb: ')
 
         radioBtn = self.sender()
         if radioBtn.isChecked():
-            print("--------- ",radioBtn.text())  # towards, against
+            # print("--------- ",radioBtn.text())  # towards, against
             if "toward" in radioBtn.text():
                 self.param_d[self.current_cell_def]["motility_chemotaxis_towards"] = True
             else:
@@ -3278,10 +4278,11 @@ class CellDef(QWidget):
     #-----------------------------------------------------------------------------------------
     # Fill them using the given model (the .xml)
     def fill_substrates_comboboxes(self):
-        print("cell_def_tab.py: ------- fill_substrates_comboboxes")
-        print("self.substrate_list = ",self.substrate_list)
+        # print("cell_def_tab.py: ------- fill_substrates_comboboxes")
+        # print("self.substrate_list = ",self.substrate_list)
         self.substrate_list.clear()  # rwh/todo: where/why/how is this list maintained?
         self.motility_substrate_dropdown.clear()
+        self.motility2_substrate_dropdown.clear()
         self.secretion_substrate_dropdown.clear()
         uep = self.xml_root.find('.//microenvironment_setup')  # find unique entry point
         # vp = []   # pointers to <variable> nodes
@@ -3293,21 +4294,65 @@ class CellDef(QWidget):
                 name = var.attrib['name']
                 self.substrate_list.append(name)
                 self.motility_substrate_dropdown.addItem(name)
+                self.motility2_substrate_dropdown.addItem(name)
                 self.secretion_substrate_dropdown.addItem(name)
-        print("cell_def_tab.py: ------- fill_substrates_comboboxes:  self.substrate_list = ",self.substrate_list)
+        # print("cell_def_tab.py: ------- fill_substrates_comboboxes:  self.substrate_list = ",self.substrate_list)
 
     #-----------------------------------------------------------------------------------------
-    # def delete_substrate_from_comboboxes(self, item_idx):
-    def delete_substrate(self, item_idx):
+    # Fill them using the given model (the .xml)
+    def fill_celltypes_comboboxes(self):
+        print("cell_def_tab.py: ------- fill_celltypes_comboboxes")
+        # print("self.celltypes_list = ",self.celltypes_list)
+        self.celltypes_list.clear()  # rwh/todo: where/why/how is this list maintained?
+        self.live_phagocytosis_dropdown.clear()
+        self.attack_rate_dropdown.clear()
+        self.fusion_rate_dropdown.clear()
+        self.cell_transformation_dropdown.clear()
+
+        self.cell_adhesion_affinity_dropdown.clear()
+        uep = self.xml_root.find('.//cell_definitions')  # find unique entry point
+        # vp = []   # pointers to <variable> nodes
+        if uep:
+            idx = 0
+            for var in uep.findall('cell_definition'):
+                # vp.append(var)
+                # print(" --> ",var.attrib['name'])
+                name = var.attrib['name']
+                self.celltypes_list.append(name)
+                self.live_phagocytosis_dropdown.addItem(name)
+                self.attack_rate_dropdown.addItem(name)
+                self.fusion_rate_dropdown.addItem(name)
+                self.cell_transformation_dropdown.addItem(name)
+
+                self.cell_adhesion_affinity_dropdown.addItem(name)
+
+        # print("cell_def_tab.py: ------- fill_celltypes_comboboxes:  self.celltypes_list = ",self.celltypes_list)
+
+    #-----------------------------------------------------------------------------------------
+    def add_new_celltype_comboboxes(self, name):
+        print("cell_def_tab.py: ------- add_new_celltype_comboboxes",name)
+        self.celltypes_list.append(name)
+        self.live_phagocytosis_dropdown.addItem(name)
+        self.attack_rate_dropdown.addItem(name)
+        self.fusion_rate_dropdown.addItem(name)
+        self.cell_transformation_dropdown.addItem(name)
+
+        self.cell_adhesion_affinity_dropdown.addItem(name)
+
+    #-----------------------------------------------------------------------------------------
+    # def delete_substrate(self, item_idx):
+    def delete_substrate(self, item_idx, new_substrate):
 
         # 1) delete it from the comboboxes
-        # print("------- delete_substrate_from_comboboxes: name=",name)
+        # print("------- delete_substrate: name=",name)
         # print("------- delete_substrate: index=",item_idx)
         subname = self.motility_substrate_dropdown.itemText(item_idx)
-        print("        name = ", subname)
+        subname = self.motility2_substrate_dropdown.itemText(item_idx)
+        print("cell_def_tab.py: delete_substrate():    subname = ", subname)
         self.substrate_list.remove(subname)
         # print("self.substrate_list = ",self.substrate_list)
         self.motility_substrate_dropdown.removeItem(item_idx)
+        self.motility2_substrate_dropdown.removeItem(item_idx)
         self.secretion_substrate_dropdown.removeItem(item_idx)
         # self.motility_substrate_dropdown.clear()
         # self.secretion_substrate_dropdown.clear()
@@ -3324,8 +4369,22 @@ class CellDef(QWidget):
             # print("--- old: ",self.param_d[cdname]["secretion"])
             # print(" keys= ",self.param_d[cdname]["secretion"].keys() )
             # if self.param_d[cdname]["secretion"].has_key(subname):
+            if subname == self.param_d[cdname]["motility_chemotaxis_substrate"]:
+                self.param_d[cdname]["motility_chemotaxis_substrate"] = new_substrate
+
+            if subname == self.param_d[cdname]["motility_advanced_chemotaxis_substrate"]:
+                self.param_d[cdname]["motility_advanced_chemotaxis_substrate"] = new_substrate
+
             if subname in self.param_d[cdname]["secretion"]:
                 del_key = self.param_d[cdname]["secretion"].pop(subname)
+
+            if subname in self.param_d[cdname]["chemotactic_sensitivity"]:
+                del_key = self.param_d[cdname]["chemotactic_sensitivity"].pop(subname)
+            # rwh: hmm, what about these?
+            # self.param_d[cdname]["motility_chemotaxis_substrate"] = new_name
+            # self.param_d[cdname]["motility_advanced_chemotaxis_substrate"] = new_name
+
+            # print("--- cell_def_tab.py: delete_substrate(), after deletion, param_d=  ",self.param_d[cdname])
         # print("--- after deletion, param_d=  ",self.param_d[cdname]["secretion"])
         # print("\n--- after deletion, self.current_secretion_substrate=  ",self.current_secretion_substrate)
 
@@ -3342,6 +4401,7 @@ class CellDef(QWidget):
         # self.secretion_substrate_dropdown.clear()
         # self.substrate_list.append(name)
         self.motility_substrate_dropdown.addItem(substrate_name)
+        self.motility2_substrate_dropdown.addItem(substrate_name)
         self.secretion_substrate_dropdown.addItem(substrate_name)
 
     #-----------------------------------------------------------------------------------------
@@ -3361,6 +4421,8 @@ class CellDef(QWidget):
             if old_name == self.motility_substrate_dropdown.itemText(idx):
                 # print("old in dropdown: ", self.motility_substrate_dropdown.itemText(idx))
                 self.motility_substrate_dropdown.setItemText(idx, new_name)
+            if old_name == self.motility2_substrate_dropdown.itemText(idx):
+                self.motility2_substrate_dropdown.setItemText(idx, new_name)
             if old_name == self.secretion_substrate_dropdown.itemText(idx):
                 self.secretion_substrate_dropdown.setItemText(idx, new_name)
 
@@ -3369,12 +4431,67 @@ class CellDef(QWidget):
             # print("--- cdname = ",cdname)
             # print("--- old: ",self.param_d[cdname]["secretion"])
             # print("--- new_name: ",new_name)
-            self.param_d[cdname]["motility_chemotaxis_substrate"] = new_name
+            if self.param_d[cdname]["motility_chemotaxis_substrate"] == old_name:
+                self.param_d[cdname]["motility_chemotaxis_substrate"] = new_name
+
+            if self.param_d[cdname]["motility_advanced_chemotaxis_substrate"] == old_name:
+                self.param_d[cdname]["motility_advanced_chemotaxis_substrate"] = new_name
+
+            # update dicts that use substrates as keys
             self.param_d[cdname]["secretion"][new_name] = self.param_d[cdname]["secretion"].pop(old_name)
-            # print("--- new: ",self.param_d[cdname]["secretion"])
+            self.param_d[cdname]["chemotactic_sensitivity"][new_name] = self.param_d[cdname]["chemotactic_sensitivity"].pop(old_name)
 
         if old_name == self.current_secretion_substrate:
             self.current_secretion_substrate = new_name
+
+    #-----------------------------------------------------------------------------------------
+    # When a user renames a cell type in this tab, we need to update all 
+    # data structures (e.g., QComboBox) that reference it.
+    def renamed_celltype(self, old_name,new_name):
+        # 1) update in the comboboxes associated with motility(chemotaxis) and secretion
+        print("cell_def_tab.py: ------- renamed_celltype()", old_name," -> ",new_name)
+        # print("       old_name = ",old_name)
+        # print("       new_name = ",new_name)
+        self.celltypes_list = [new_name if x==old_name else x for x in self.celltypes_list]
+        print("    self.celltypes_list= ",self.celltypes_list)
+        print()
+        for cdname in self.param_d.keys():
+            print(self.param_d[cdname])
+            print("\n----")
+
+        # 1) update all dropdown widgets containing the cell def names
+        for idx in range(len(self.celltypes_list)):
+            # print("idx,old,new = ",idx, old_name,new_name)
+            # if old_name in self.motility_substrate_dropdown.itemText(idx):
+            if old_name == self.live_phagocytosis_dropdown.itemText(idx):
+                self.live_phagocytosis_dropdown.setItemText(idx, new_name)
+            if old_name == self.attack_rate_dropdown.itemText(idx):
+                self.attack_rate_dropdown.setItemText(idx, new_name)
+            if old_name == self.fusion_rate_dropdown.itemText(idx):
+                self.fusion_rate_dropdown.setItemText(idx, new_name)
+            if old_name == self.cell_transformation_dropdown.itemText(idx):
+                self.cell_transformation_dropdown.setItemText(idx, new_name)
+            if old_name == self.cell_adhesion_affinity_dropdown.itemText(idx):
+                self.cell_adhesion_affinity_dropdown.setItemText(idx, new_name)
+
+        # 2) OMG, also update all param_d dicts that involve cell def names
+        print("--- renaming all dicts with cell defs")
+        for cdname in self.param_d.keys():  # for all cell defs, rename motility/chemotaxis and secretion substrate
+            print("--- cdname = ",cdname)
+            self.param_d[cdname]["live_phagocytosis_rate"][new_name] = self.param_d[cdname]["live_phagocytosis_rate"].pop(old_name)
+            self.param_d[cdname]["attack_rate"][new_name] = self.param_d[cdname]["attack_rate"].pop(old_name)
+            self.param_d[cdname]["fusion_rate"][new_name] = self.param_d[cdname]["fusion_rate"].pop(old_name)
+            self.param_d[cdname]["transformation_rate"][new_name] = self.param_d[cdname]["transformation_rate"].pop(old_name)
+            self.param_d[cdname]["cell_adhesion_affinity"][new_name] = self.param_d[cdname]["cell_adhesion_affinity"].pop(old_name)
+        #     # print("--- new_name: ",new_name)
+        #     self.param_d[cdname]["motility_chemotaxis_substrate"] = new_name
+        #     self.param_d[cdname]["motility_advanced_chemotaxis_substrate"] = new_name
+        #     self.param_d[cdname]["secretion"][new_name] = self.param_d[cdname]["secretion"].pop(old_name)
+
+        #     # print("--- new: ",self.param_d[cdname]["secretion"])
+
+        # if old_name == self.current_secretion_substrate:
+        #     self.current_secretion_substrate = new_name
 
     #-----------------------------------------------------------------------------------------
     def new_cycle_params(self, cdname):
@@ -3404,6 +4521,7 @@ class CellDef(QWidget):
         self.param_d[cdname]['cycle_quiescent_trate10'] = sval
 
         # duration times
+        sval = '1.e9'
         self.param_d[cdname]['cycle_live_duration00'] = sval
 
         self.param_d[cdname]['cycle_Ki67_duration01'] = sval
@@ -3477,9 +4595,10 @@ class CellDef(QWidget):
 
     def new_death_params(self, cdname):
         sval = self.default_sval
+        duration_sval = '1.e9'
         self.param_d[cdname]["death_rate"] = sval
         self.param_d[cdname]["apoptosis_death_rate"] = sval
-        self.param_d[cdname]["apoptosis_phase0_duration"] = sval
+        self.param_d[cdname]["apoptosis_phase0_duration"] = duration_sval
         self.param_d[cdname]["apoptosis_phase0_fixed"] = False
 
         self.param_d[cdname]["apoptosis_unlysed_rate"] = sval
@@ -3491,9 +4610,9 @@ class CellDef(QWidget):
 
         #-----
         self.param_d[cdname]["necrosis_death_rate"] = sval
-        self.param_d[cdname]["necrosis_phase0_duration"] = sval
+        self.param_d[cdname]["necrosis_phase0_duration"] = duration_sval
         self.param_d[cdname]["necrosis_phase0_fixed"] = False
-        self.param_d[cdname]["necrosis_phase1_duration"] = sval
+        self.param_d[cdname]["necrosis_phase1_duration"] = duration_sval
         self.param_d[cdname]["necrosis_phase1_fixed"] = False
 
         self.param_d[cdname]["necrosis_unlysed_rate"] = sval
@@ -3505,9 +4624,10 @@ class CellDef(QWidget):
 
     def new_volume_params(self, cdname):
         sval = self.default_sval
-        self.param_d[cdname]["volume_total"] = sval
-        self.param_d[cdname]["volume_fluid_fraction"] = sval
-        self.param_d[cdname]["volume_nuclear"] = sval
+        # use PhysiCell_phenotype.cpp: Volume::Volume() values
+        self.param_d[cdname]["volume_total"] = '2494'
+        self.param_d[cdname]["volume_fluid_fraction"] = '0.75'
+        self.param_d[cdname]["volume_nuclear"] = '540'
         self.param_d[cdname]["volume_fluid_change_rate"] = sval
         self.param_d[cdname]["volume_cytoplasmic_rate"] = sval
         self.param_d[cdname]["volume_nuclear_rate"] = sval
@@ -3515,17 +4635,29 @@ class CellDef(QWidget):
         self.param_d[cdname]["volume_calcif_rate"] = sval
         self.param_d[cdname]["volume_rel_rupture_vol"] = sval
 
-    def new_mechanics_params(self, cdname):
+    def new_mechanics_params(self, cdname_new):
         sval = self.default_sval
-        self.param_d[cdname]["mechanics_adhesion"] = sval
-        self.param_d[cdname]["mechanics_repulsion"] = sval
-        self.param_d[cdname]["mechanics_adhesion_distance"] = sval
+        # we're being inconsistent, but use defaults found in phenotype.cpp:Mechanics() instead of 0.0
+        self.param_d[cdname_new]["mechanics_adhesion"] = '0.4'
+        self.param_d[cdname_new]["mechanics_repulsion"] = '10.0'
+        self.param_d[cdname_new]["mechanics_adhesion_distance"] = '1.25'
 
-        self.param_d[cdname]["mechanics_relative_equilibrium_distance"] = sval
-        self.param_d[cdname]["mechanics_absolute_equilibrium_distance"] = sval
+        self.param_d[cdname_new]["mechanics_relative_equilibrium_distance"] = '1.8'
+        self.param_d[cdname_new]["mechanics_absolute_equilibrium_distance"] = '15.12'
 
-        self.param_d[cdname]["mechanics_relative_equilibrium_distance_enabled"] = False
-        self.param_d[cdname]["mechanics_absolute_equilibrium_distance_enabled"] = False
+        self.param_d[cdname_new]["mechanics_relative_equilibrium_distance_enabled"] = False
+        self.param_d[cdname_new]["mechanics_absolute_equilibrium_distance_enabled"] = False
+
+        for cdname in self.param_d.keys():    # for each cell def
+            for cdname2 in self.param_d.keys():    # for each cell def
+                # print('cdname2= ',cdname2)
+                if (cdname == cdname_new) or (cdname2 == cdname_new): 
+                    self.param_d[cdname]['live_phagocytosis_rate'][cdname2] = sval
+                    self.param_d[cdname]['attack_rate'][cdname2] = sval
+                    self.param_d[cdname]['fusion_rate'][cdname2] = sval
+                    self.param_d[cdname]['transformation_rate'][cdname2] = sval
+
+                    self.param_d[cdname]['cell_adhesion_affinity'][cdname2] = '1.0'  # default affinity
 
     def new_motility_params(self, cdname):
         sval = self.default_sval
@@ -3536,34 +4668,85 @@ class CellDef(QWidget):
         self.param_d[cdname]["motility_enabled"] = False
         self.param_d[cdname]["motility_use_2D"] = True
         self.param_d[cdname]["motility_chemotaxis"] = False
-
-        # self.motility_substrate_dropdown.setCurrentText(self.param_d[self.current_cell_def]["motility_chemotaxis_substrate"])
-        # self.param_d[self.current_cell_def]["motility_chemotaxis_substrate"] = sval
-
         self.param_d[cdname]["motility_chemotaxis_towards"] = True
 
-    # todo: fix this (currently we don't call it because it clears the previously selected cell def's values)
-    # def new_secretion_params(self, cdname):
-    #     sval = self.default_sval
-    #     self.param_d[cdname]["secretion"][self.current_secretion_substrate]["secretion_rate"] = sval
-    #     self.param_d[cdname]["secretion"][self.current_secretion_substrate]["secretion_target"] = sval
-    #     self.param_d[cdname]["secretion"][self.current_secretion_substrate]["uptake_rate"] = sval
-    #     self.param_d[cdname]["secretion"][self.current_secretion_substrate]["net_export_rate"] = sval
+        self.param_d[cdname]["motility_advanced_chemotaxis"] = False
+        self.param_d[cdname]["normalize_each_gradient"] = False
+        # self.motility_substrate_dropdown.setCurrentText(self.param_d[self.current_cell_def]["motility_chemotaxis_substrate"])
+        # self.param_d[self.current_cell_def]["motility_chemotaxis_substrate"] = sval
+        for substrate_name in self.param_d[cdname]["chemotactic_sensitivity"].keys():
+            self.param_d[cdname]["chemotactic_sensitivity"][substrate_name] = '0.0'
 
+    def new_secretion_params(self, cdname):
+        # print("new_secretion_params(): self.current_secretion_substrate = ",self.current_secretion_substrate)
+        # print("        self.param_d[cdname]['secretion'] = ",self.param_d[cdname]["secretion"])
+        sval = self.default_sval
+        for substrate_name in self.param_d[cdname]["secretion"].keys():
+            self.param_d[cdname]["secretion"][substrate_name]["secretion_rate"] = sval
+            self.param_d[cdname]["secretion"][substrate_name]["secretion_target"] = '1.0'
+            self.param_d[cdname]["secretion"][substrate_name]["uptake_rate"] = sval
+            self.param_d[cdname]["secretion"][substrate_name]["net_export_rate"] = sval
+
+    def new_interaction_params(self, cdname_new):
+        print("\n--------new_interaction_params(): cdname_new= ",cdname_new)
+        sval = self.default_sval
+        self.param_d[cdname_new]["dead_phagocytosis_rate"] = sval
+        self.param_d[cdname_new]["damage_rate"] = '1.0'
+
+        # self.param_d[cdname]['live_phagocytosis_rate'][self.live_phagocytosis_celltype] = text
+        # for cdname2 in self.param_d.keys():  
+        #     print('cdname2= ',cdname2)
+        #     self.param_d[cdname]['live_phagocytosis_rate'][cdname2] = sval
+        #     self.param_d[cdname]['attack_rate'][cdname2] = sval
+        #     self.param_d[cdname]['fusion_rate'][cdname2] = sval
+        #     self.param_d[cdname]['transformation_rate'][cdname2] = sval
+
+        for cdname in self.param_d.keys():    # for each cell def
+            # for cdname2 in self.param_d[cdname]['live_phagocytosis_rate'].keys():    # for each cell def's 
+            for cdname2 in self.param_d.keys():    # for each cell def
+                # print('cdname2= ',cdname2)
+                if (cdname == cdname_new) or (cdname2 == cdname_new): 
+                    self.param_d[cdname]['live_phagocytosis_rate'][cdname2] = sval
+                    self.param_d[cdname]['attack_rate'][cdname2] = sval
+                    self.param_d[cdname]['fusion_rate'][cdname2] = sval
+                    self.param_d[cdname]['transformation_rate'][cdname2] = sval
+
+        # print("\n--------new_interaction_params(): param_d= ",self.param_d)
+        # sys.exit(-1)
 
     def add_new_substrate(self, sub_name):
         self.add_new_substrate_comboboxes(sub_name)
 
-
         sval = self.default_sval
-        for cdname in self.param_d.keys():  # for all cell defs, initialize secretion params
+
+        # for all cell defs: 
+        for cdname in self.param_d.keys():  
             # print('cdname = ',cdname)
-            # # print(self.param_d[cdname]["secretion"])
+            # print(self.param_d[cdname]["secretion"])
+
+            # initialize secretion params
             self.param_d[cdname]["secretion"][sub_name] = {}
             self.param_d[cdname]["secretion"][sub_name]["secretion_rate"] = sval
             self.param_d[cdname]["secretion"][sub_name]["secretion_target"] = sval
             self.param_d[cdname]["secretion"][sub_name]["uptake_rate"] = sval
             self.param_d[cdname]["secretion"][sub_name]["net_export_rate"] = sval
+
+            # initialize motility advanced chemotaxis params
+            self.param_d[cdname]["chemotactic_sensitivity"][sub_name] = sval
+
+
+    def add_new_celltype(self, cdname):
+        self.add_new_celltype_comboboxes(cdname)
+
+        # sval = self.default_sval
+        # for cdname in self.param_d.keys():  # for all cell defs, initialize secretion params
+        #     # print('cdname = ',cdname)
+        #     # # print(self.param_d[cdname]["secretion"])
+        #     self.param_d[cdname]["secretion"][sub_name] = {}
+        #     self.param_d[cdname]["secretion"][sub_name]["secretion_rate"] = sval
+        #     self.param_d[cdname]["secretion"][sub_name]["secretion_target"] = sval
+        #     self.param_d[cdname]["secretion"][sub_name]["uptake_rate"] = sval
+        #     self.param_d[cdname]["secretion"][sub_name]["net_export_rate"] = sval
 
 
     def new_custom_data_params(self, cdname):
@@ -3798,19 +4981,76 @@ class CellDef(QWidget):
     #-----------------------------------------------------------------------------------------
     def update_motility_params(self):
         cdname = self.current_cell_def
+        print("\n----- update_motility_params():  cdname= ",cdname)
+        # print('motility_advanced_chemotaxis=',self.param_d[cdname]["motility_advanced_chemotaxis"])
+
         self.speed.setText(self.param_d[cdname]["speed"])
         self.persistence_time.setText(self.param_d[cdname]["persistence_time"])
         self.migration_bias.setText(self.param_d[cdname]["migration_bias"])
 
         self.motility_enabled.setChecked(self.param_d[cdname]["motility_enabled"])
+
+        # if self.param_d[cdname]["motility_enabled"]:
+        if self.param_d[cdname]["motility_chemotaxis"]:
+            print("   (simple) chemotaxis motility is enabled:")
+            self.param_d[cdname]["motility_advanced_chemotaxis"] = False
+            self.chemotaxis_enabled_cb(True)
+            # self.motility_substrate_dropdown.setEnabled(True)
+            # self.chemotaxis_direction_towards.setEnabled(True)
+            # self.chemotaxis_direction_against.setEnabled(True)
+            # self.advanced_chemotaxis_enabled.setChecked(False)
+        else:
+            self.chemotaxis_enabled_cb(False)
+        #     print("   (simple) chemotaxis motility is NOT enabled:")
+        #     print("   motility_enabled=",self.param_d[cdname]["motility_enabled"])
+        #     print("--> ",self.param_d[cdname])
+        #     print()
+        #     self.motility_use_2D.setChecked(False)
+        #     self.motility_substrate_dropdown.setEnabled(False)
+        #     self.chemotaxis_direction_towards.setEnabled(False)
+        #     self.chemotaxis_direction_against.setEnabled(False)
+
+
         self.motility_use_2D.setChecked(self.param_d[cdname]["motility_use_2D"])
         self.chemotaxis_enabled.setChecked(self.param_d[cdname]["motility_chemotaxis"])
-        self.motility_substrate_dropdown.setCurrentText(self.param_d[self.current_cell_def]["motility_chemotaxis_substrate"])
+        self.motility_substrate_dropdown.setCurrentText(self.param_d[cdname]["motility_chemotaxis_substrate"])
 
         if self.param_d[cdname]["motility_chemotaxis_towards"]:
             self.chemotaxis_direction_towards.setChecked(True)
         else:
             self.chemotaxis_direction_against.setChecked(True)
+
+        # Advanced Chemotaxis
+        self.motility2_substrate_dropdown.setCurrentText(self.param_d[cdname]["motility_advanced_chemotaxis_substrate"])
+
+        if self.param_d[cdname]["motility_advanced_chemotaxis"]:
+            self.advanced_chemotaxis_enabled.setChecked(True)
+            self.advanced_chemotaxis_enabled_cb(True)
+        else:
+            self.advanced_chemotaxis_enabled.setChecked(False)
+            self.advanced_chemotaxis_enabled_cb(False)
+
+        if self.param_d[cdname]["normalize_each_gradient"]:
+            self.normalize_each_gradient.setChecked(True)
+            self.normalize_each_gradient_cb(True)
+        else:
+            self.normalize_each_gradient.setChecked(False)
+            self.normalize_each_gradient_cb(False)
+
+        # print('chemotactic_sensitivity= ',self.param_d[cdname]['chemotactic_sensitivity'])
+        # foobar now None
+        print('    chemotactic_sensitivity= ',self.param_d[cdname]['chemotactic_sensitivity'])
+        if self.param_d[cdname]['motility_advanced_chemotaxis_substrate'] == 'foobar':
+            print('-- motility_advanced_chemotaxis_substrate is foobar')
+        else:
+            if len(self.param_d[cdname]['motility_advanced_chemotaxis_substrate']) > 0:
+                print('new val = ',self.param_d[cdname]['chemotactic_sensitivity'][self.param_d[cdname]['motility_advanced_chemotaxis_substrate']])
+        # self.chemo_sensitivity.setText('42')
+            if len(self.param_d[cdname]['motility_advanced_chemotaxis_substrate']) > 0:
+                self.chemo_sensitivity.setText(self.param_d[cdname]['chemotactic_sensitivity'][self.param_d[cdname]['motility_advanced_chemotaxis_substrate']])
+
+        # sys.exit(-1)
+        print("----- leave update_motility_params()\n")
 
     #-----------------------------------------------------------------------------------------
     def update_secretion_params(self):
@@ -3825,9 +5065,79 @@ class CellDef(QWidget):
         self.uptake_rate.setText(self.param_d[cdname]["secretion"][self.current_secretion_substrate]["uptake_rate"])
         self.secretion_net_export_rate.setText(self.param_d[cdname]["secretion"][self.current_secretion_substrate]["net_export_rate"])
 
-        # rwh: also update the combobox to select the substrate
+        # rwh: also update the qdropdown to select the substrate
 
+    #-----------------------------------------------------------------------------------------
+    def update_interaction_params(self):
+        cdname = self.current_cell_def
+        self.dead_phagocytosis_rate.setText(self.param_d[cdname]["dead_phagocytosis_rate"])
+        self.damage_rate.setText(self.param_d[cdname]["damage_rate"])
 
+        if self.live_phagocytosis_celltype in self.param_d[cdname]["live_phagocytosis_rate"].keys():
+            self.live_phagocytosis_rate.setText(self.param_d[cdname]["live_phagocytosis_rate"][self.live_phagocytosis_celltype])
+        else:
+            self.live_phagocytosis_rate.setText(self.default_sval)
+
+        if self.attack_rate_celltype in self.param_d[cdname]["attack_rate"].keys():
+            self.attack_rate.setText(self.param_d[cdname]["attack_rate"][self.attack_rate_celltype])
+        else:
+            self.attack_rate.setText(self.default_sval)
+
+        if self.fusion_rate_celltype in self.param_d[cdname]["fusion_rate"].keys():
+            self.fusion_rate.setText(self.param_d[cdname]["fusion_rate"][self.fusion_rate_celltype])
+        else:
+            self.fusion_rate.setText(self.default_sval)
+
+        if self.transformation_rate_celltype in self.param_d[cdname]["transformation_rate"].keys():
+            self.transformation_rate.setText(self.param_d[cdname]["transformation_rate"][self.transformation_rate_celltype])
+        else:
+            self.transformation_rate.setText(self.default_sval)
+
+    #-----------------------------------------------------------------------------------------
+    def missing_boolean_info_popup(self, dups_dict):
+        msgBox = QMessageBox()
+        msgBox.setIcon(QMessageBox.Information)
+        msgBox.setText("Intracellular (boolean) info is missing. ")
+        msgBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+
+        returnValue = msgBox.exec()
+        if returnValue == QMessageBox.Ok:
+            print('OK clicked')
+
+    #-----------------------------------------------------------------------------------------
+    def update_intracellular_params(self):
+        cdname = self.current_cell_def
+        if self.param_d[cdname]["intracellular"] is not None:    
+            if self.param_d[cdname]["intracellular"]["type"] == "maboss":
+                self.intracellular_type_dropdown.setCurrentIndex(1)
+                self.physiboss_bnd_file.setText(self.param_d[cdname]["intracellular"]["bnd_filename"])
+                self.physiboss_cfg_file.setText(self.param_d[cdname]["intracellular"]["cfg_filename"])
+                self.physiboss_time_step.setText(self.param_d[cdname]["intracellular"]["time_step"])
+                self.physiboss_scaling.setText(self.param_d[cdname]["intracellular"]["scaling"])
+
+                self.physiboss_clear_initial_values()
+                for i, initial_value in enumerate(self.param_d[cdname]["intracellular"]["initial_values"]):
+                    self.physiboss_add_initial_values()
+                    node, value, _, _ = self.physiboss_initial_states[i]
+                    node.setText(initial_value[0])
+                    value.setText(initial_value[1])
+
+                self.physiboss_clear_mutants()
+                for i, mutant in enumerate(self.param_d[cdname]["intracellular"]["mutants"]):
+                    self.physiboss_add_mutant()
+                    node, value, _, _ = self.physiboss_mutants[i]
+                    node.setText(mutant[0])
+                    value.setText(mutant[1])
+
+                self.physiboss_clear_parameters()
+                for i, parameter in enumerate(self.param_d[cdname]["intracellular"]["parameters"]):
+                    self.physiboss_add_parameter()
+                    name, value, _, _ = self.physiboss_parameters[i]
+                    name.setText(parameter[0])
+                    value.setText(parameter[1])
+
+        else:
+            self.intracellular_type_dropdown.setCurrentIndex(0)
     #-----------------------------------------------------------------------------------------
     def clear_custom_data_params(self):
         cdname = self.current_cell_def
@@ -3847,8 +5157,8 @@ class CellDef(QWidget):
     #-----------------------------------------------------------------------------------------
     def update_custom_data_params(self):
         cdname = self.current_cell_def
-        print("\n--------- cell_def_tab.py: update_custom_data_params():  cdname= ",cdname)
-        print("\n--------- cell_def_tab.py: update_custom_data_params():  self.param_d[cdname]['custom_data'] = ",self.param_d[cdname]['custom_data'])
+        # print("\n--------- cell_def_tab.py: update_custom_data_params():  cdname= ",cdname)
+        # print("\n--------- cell_def_tab.py: update_custom_data_params():  self.param_d[cdname]['custom_data'] = ",self.param_d[cdname]['custom_data'])
         num_vals = len(self.param_d[cdname]['custom_data'].keys())
         # print("num_vals =", num_vals)
         idx = 0
@@ -3874,7 +5184,7 @@ class CellDef(QWidget):
     def tree_item_clicked_cb(self, it,col):
         # print('\n\n------------ tree_item_clicked_cb -----------:', it, col, it.text(col) )
         self.current_cell_def = it.text(col)
-        print('--- tree_item_clicked_cb(): self.current_cell_def= ',self.current_cell_def )
+        # print('--- tree_item_clicked_cb(): self.current_cell_def= ',self.current_cell_def )
 
         # for k in self.param_d.keys():
         #     print(" ===>>> ",k, " : ", self.param_d[k])
@@ -3888,915 +5198,13 @@ class CellDef(QWidget):
         self.update_mechanics_params()
         self.update_motility_params()
         self.update_secretion_params()
+        self.update_interaction_params()
+        # if "bnd_filename" in self.param_d[self.current_cell_def]["intracellular"].keys():
+        if self.param_d[self.current_cell_def]["intracellular"] is not None:
+            self.update_intracellular_params()
         # self.update_molecular_params()
         self.update_custom_data_params()
 
-
-    #-------------------------------------------------------------------
-    # Parse the .xml, populate the dict of params (self.param_d) and self.tree
-    def populate_tree(self):
-        print("=======================  cell_def_tab(): populate_tree  ======================= ")
-        print("    self.param_d = ",self.param_d)
-        self.master_custom_varname.clear()
-
-        uep = self.xml_root.find(".//cell_definitions")
-        if uep:
-            self.tree.clear()
-            idx = 0
-            for cell_def in uep:
-                # print(cell_def.attrib['name'])
-                cell_def_name = cell_def.attrib['name']
-                if idx == 0:
-                    cell_def_0th = cell_def_name
-
-                self.param_d[cell_def_name] = {}
-                self.param_d[cell_def_name]['ID'] = cell_def.attrib['ID']  # e.g., "0"
-                # self.param_d[cell_def_name]["name"] = cell_def_name
-                self.current_cell_def = cell_def_name  # do this for the callback methods?
-
-                cellname = QTreeWidgetItem([cell_def_name])
-                cellname.setFlags(cellname.flags() | QtCore.Qt.ItemIsEditable)
-                self.tree.insertTopLevelItem(idx,cellname)
-                if idx == 0:  # select the 1st (0th) entry
-                    self.tree.setCurrentItem(cellname)
-
-                idx += 1
-
-                # Now fill the param dict for each substrate and the Qt widget values for the 0th
-
-                print("\n===== populate_tree():  cycle")
-
-                cycle_path = ".//cell_definition[" + str(idx) + "]//phenotype//cycle"
-                print(" >> cycle_path=",cycle_path)
-                cycle_code = int(uep.find(cycle_path).attrib['code'])
-                print("   cycle code=",cycle_code)
-
-                # NOTE: we don't seem to use 3 or 4
-                # static const int advanced_Ki67_cycle_model= 0;
-                # static const int basic_Ki67_cycle_model=1;
-                # static const int flow_cytometry_cycle_model=2;
-                # static const int live_apoptotic_cycle_model=3;
-                # static const int total_cells_cycle_model=4;
-                # static const int live_cells_cycle_model = 5; 
-                # static const int flow_cytometry_separated_cycle_model = 6; 
-                # static const int cycling_quiescent_model = 7; 
-
-                # self.cycle_dropdown.addItem("live cells")  # 5
-                # self.cycle_dropdown.addItem("basic Ki67")  # 1
-                # self.cycle_dropdown.addItem("advanced Ki67")  # 0
-                # self.cycle_dropdown.addItem("flow cytometry")  # 2
-                # self.cycle_dropdown.addItem("flow cytometry separated")  # 6
-                # self.cycle_dropdown.addItem("cycling quiescent")  # 7
-
-                if cycle_code == 0:
-                    self.cycle_dropdown.setCurrentIndex(2)
-                    self.param_d[cell_def_name]['cycle'] = 'advanced Ki67'
-                elif cycle_code == 1:
-                    self.cycle_dropdown.setCurrentIndex(1)
-                    self.param_d[cell_def_name]['cycle'] = 'basic Ki67'
-                elif cycle_code == 2:
-                    self.cycle_dropdown.setCurrentIndex(3)
-                    self.param_d[cell_def_name]['cycle'] = 'flow cytometry'
-                elif cycle_code == 5:
-                    self.cycle_dropdown.setCurrentIndex(0)
-                    self.param_d[cell_def_name]['cycle'] = 'live cells'
-                elif cycle_code == 6:
-                    self.cycle_dropdown.setCurrentIndex(4)
-                    self.param_d[cell_def_name]['cycle'] = 'flow cytometry separated'
-                elif cycle_code == 7:
-                    self.cycle_dropdown.setCurrentIndex(5)
-                    self.param_d[cell_def_name]['cycle'] = 'cycling quiescent'
-
-                self.param_d[cell_def_name]['cycle_choice_idx'] = self.cycle_dropdown.currentIndex()
-
-            # rwh: We only use cycle code=5 or 6 in ALL sample projs?!
-                # <cell_definition name="cargo cell" ID="2" visible="true">
-                # 	<phenotype>
-                # 		<cycle code="5" name="live">  
-                # 			<phase_transition_rates units="1/min"> 
-                # 				<rate start_index="0" end_index="0" fixed_duration="false">0.0</rate>
-                # 			</phase_transition_rates>
-
-                # <cycle code="6" name="Flow cytometry model (separated)">  
-				# 	<phase_transition_rates units="1/min"> 
-				# 		<rate start_index="0" end_index="1" fixed_duration="false">0</rate>
-				# 		<rate start_index="1" end_index="2" fixed_duration="true">0.00208333</rate>
-				# 		<rate start_index="2" end_index="3" fixed_duration="true">0.00416667</rate>
-				# 		<rate start_index="3" end_index="0" fixed_duration="true">0.0166667</rate>
-
-
-                #  transition rates: set default values for all params
-                default_sval = '0.0'
-                self.param_d[cell_def_name]['cycle_live_trate00'] = default_sval
-
-                self.param_d[cell_def_name]['cycle_Ki67_trate01'] = default_sval
-                self.param_d[cell_def_name]['cycle_Ki67_trate10'] = default_sval
-
-                self.param_d[cell_def_name]['cycle_advancedKi67_trate01'] = default_sval
-                self.param_d[cell_def_name]['cycle_advancedKi67_trate12'] = default_sval
-                self.param_d[cell_def_name]['cycle_advancedKi67_trate20'] = default_sval
-
-                self.param_d[cell_def_name]['cycle_flowcyto_trate01'] = default_sval
-                self.param_d[cell_def_name]['cycle_flowcyto_trate12'] = default_sval
-                self.param_d[cell_def_name]['cycle_flowcyto_trate20'] = default_sval
-
-                self.param_d[cell_def_name]['cycle_flowcytosep_trate01'] = default_sval
-                self.param_d[cell_def_name]['cycle_flowcytosep_trate12'] = default_sval
-                self.param_d[cell_def_name]['cycle_flowcytosep_trate23'] = default_sval
-                self.param_d[cell_def_name]['cycle_flowcytosep_trate30'] = default_sval
-
-                self.param_d[cell_def_name]['cycle_quiescent_trate01'] = default_sval
-                self.param_d[cell_def_name]['cycle_quiescent_trate10'] = default_sval
-
-
-                #  transition rates: set default values for all "fixed_duration" checkboxes
-                default_bval = False
-                self.param_d[cell_def_name]['cycle_live_trate00_fixed'] = default_bval
-
-                self.param_d[cell_def_name]['cycle_Ki67_trate01_fixed'] = default_bval
-                self.param_d[cell_def_name]['cycle_Ki67_trate10_fixed'] = default_bval
-
-                self.param_d[cell_def_name]['cycle_advancedKi67_trate01_fixed'] = default_bval
-                self.param_d[cell_def_name]['cycle_advancedKi67_trate12_fixed'] = default_bval
-                self.param_d[cell_def_name]['cycle_advancedKi67_trate20_fixed'] = default_bval
-
-                self.param_d[cell_def_name]['cycle_flowcyto_trate01_fixed'] = default_bval
-                self.param_d[cell_def_name]['cycle_flowcyto_trate12_fixed'] = default_bval
-                self.param_d[cell_def_name]['cycle_flowcyto_trate20_fixed'] = default_bval
-
-                self.param_d[cell_def_name]['cycle_flowcytosep_trate01_fixed'] = default_bval
-                self.param_d[cell_def_name]['cycle_flowcytosep_trate12_fixed'] = default_bval
-                self.param_d[cell_def_name]['cycle_flowcytosep_trate23_fixed'] = default_bval
-                self.param_d[cell_def_name]['cycle_flowcytosep_trate30_fixed'] = default_bval
-
-                self.param_d[cell_def_name]['cycle_quiescent_trate01_fixed'] = default_bval
-                self.param_d[cell_def_name]['cycle_quiescent_trate10_fixed'] = default_bval
-
-                phase_transition_path = cycle_path + "//phase_transition_rates"
-                print(' >> phase_transition_path ')
-                pt_uep = uep.find(phase_transition_path)
-                if pt_uep:
-                    self.cycle_rb1.setChecked(True)
-                    self.param_d[cell_def_name]['cycle_duration_flag'] = False
-                    self.cycle_duration_flag = False
-                    self.customize_cycle_choices()
-
-                    for rate in pt_uep: 
-                        print(rate)
-                        # print("start_index=",rate.attrib["start_index"])
-                        # We only use cycle code=5 or 6 in ALL sample projs?
-
-                        # if cycle_code == 0: #'advanced Ki67'
-                        # elif cycle_code == 1: # 'basic Ki67'
-                        # elif cycle_code == 2: # 'flow cytometry'
-                        # elif cycle_code == 5: # 'live cells'
-                        # elif cycle_code == 6: # 'flow cytometry separated'
-                        # elif cycle_code == 7: # 'cycling quiescent'
-
-                        sval = rate.text
-                        if (rate.attrib['start_index'] == "0"): 
-                            if (rate.attrib['end_index'] == "0"): #  Must be 'live'
-                                print('--  cycle_live_trate00',  sval)
-                                self.param_d[cell_def_name]['cycle_live_trate00'] = rate.text
-                                if (rate.attrib['fixed_duration'].lower() == "true"): 
-                                    self.param_d[cell_def_name]['cycle_live_trate00_fixed'] = True
-                            elif (rate.attrib['end_index'] == "1"): 
-                                if cycle_code == 0: #'advanced Ki67'
-                                    self.param_d[cell_def_name]['cycle_advancedKi67_trate01'] = sval
-                                    if (rate.attrib['fixed_duration'].lower() == "true"): 
-                                        self.param_d[cell_def_name]['cycle_advancedKi67_trate01_fixed'] = True
-                                elif cycle_code == 1: # 'basic Ki67'
-                                    self.param_d[cell_def_name]['cycle_Ki67_trate01'] = sval
-                                    if (rate.attrib['fixed_duration'].lower() == "true"): 
-                                        self.param_d[cell_def_name]['cycle_Ki67_trate01_fixed'] = True
-                                elif cycle_code == 2: # 'flow cytometry'
-                                    self.param_d[cell_def_name]['cycle_flowcyto_trate01'] = sval
-                                    if (rate.attrib['fixed_duration'].lower() == "true"): 
-                                        self.param_d[cell_def_name]['cycle_flowcyto_trate01_fixed'] = True
-                                elif cycle_code == 6: # 'flow cytometry separated'
-                                    self.param_d[cell_def_name]['cycle_flowcytosep_trate01'] = sval
-                                    if (rate.attrib['fixed_duration'].lower() == "true"): 
-                                        self.param_d[cell_def_name]['cycle_flowcytosep_trate01_fixed'] = True
-                                elif cycle_code == 7: # 'cycling quiescent'
-                                    self.param_d[cell_def_name]['cycle_quiescent_trate01'] = sval
-                                    if (rate.attrib['fixed_duration'].lower() == "true"): 
-                                        self.param_d[cell_def_name]['cycle_quiescent_trate01_fixed'] = True
-
-                        elif (rate.attrib['start_index'] == "1"):
-                            if (rate.attrib['end_index'] == "0"):  # must be 'basic Ki67'
-                                self.param_d[cell_def_name]['cycle_Ki67_trate10'] = sval
-                                if (rate.attrib['fixed_duration'].lower() == "true"): 
-                                    self.param_d[cell_def_name]['cycle_Ki67_trate10_fixed'] = True
-
-                            elif (rate.attrib['end_index'] == "2"):
-                                if cycle_code == 0: #'advanced Ki67'
-                                    self.param_d[cell_def_name]['cycle_advancedKi67_trate12'] = sval
-                                    if (rate.attrib['fixed_duration'].lower() == "true"): 
-                                        self.param_d[cell_def_name]['cycle_advancedKi67_trate12_fixed'] = True
-                                elif cycle_code == 2: # 'flow cytometry'
-                                    self.param_d[cell_def_name]['cycle_flowcyto_trate12'] = sval
-                                    if (rate.attrib['fixed_duration'].lower() == "true"): 
-                                        self.param_d[cell_def_name]['cycle_flowcyto_trate12_fixed'] = True
-                                elif cycle_code == 6: # 'flow cytometry separated'
-                                    self.param_d[cell_def_name]['cycle_flowcytosep_trate12'] = sval
-                                    if (rate.attrib['fixed_duration'].lower() == "true"): 
-                                        self.param_d[cell_def_name]['cycle_flowcytosep_trate12_fixed'] = True
-                                elif cycle_code == 7: # 'cycling quiescent'
-                                    self.param_d[cell_def_name]['cycle_quiescent_trate12'] = sval
-                                    if (rate.attrib['fixed_duration'].lower() == "true"): 
-                                        self.param_d[cell_def_name]['cycle_quiescent_trate12_fixed'] = True
-
-                        elif (rate.attrib['start_index'] == "2"):
-                            if (rate.attrib['end_index'] == "0"):
-                                if cycle_code == 0: #'advanced Ki67'
-                                    self.param_d[cell_def_name]['cycle_advancedKi67_trate20'] = sval
-                                    if (rate.attrib['fixed_duration'].lower() == "true"): 
-                                        self.param_d[cell_def_name]['cycle_advancedKi67_trate20_fixed'] = True
-                                elif cycle_code == 2: # 'flow cytometry'
-                                    self.param_d[cell_def_name]['cycle_flowcyto_trate20'] = sval
-                                    if (rate.attrib['fixed_duration'].lower() == "true"): 
-                                        self.param_d[cell_def_name]['cycle_flowcyto_trate20_fixed'] = True
-
-                            elif (rate.attrib['end_index'] == "3"):
-                                # if cycle_code == 6: # 'flow cytometry separated'
-                                self.param_d[cell_def_name]['cycle_flowcytosep_trate23'] = sval
-                                if (rate.attrib['fixed_duration'].lower() == "true"): 
-                                    self.param_d[cell_def_name]['cycle_flowcytosep_trate23_fixed'] = True
-
-                        elif (rate.attrib['start_index'] == "3") and (rate.attrib['end_index'] == "0"):
-                            # self.cycle_flowcytosep_trate30.setText(rate.text)
-                            self.param_d[cell_def_name]['cycle_flowcytosep_trate30'] = rate.text
-                            if (rate.attrib['fixed_duration'].lower() == "true"): 
-                                self.param_d[cell_def_name]['cycle_flowcytosep_trate30_fixed'] = True
-
-
-                # template.xml:
-                # <cycle code="6" name="Flow cytometry model (separated)">  
-                #     <phase_durations units="min"> 
-                #         <duration index="0" fixed_duration="false">300.0</duration>
-                #         <duration index="1" fixed_duration="true">480</duration>
-                #         <duration index="2" fixed_duration="true">240</duration>
-                #         <duration index="3" fixed_duration="true">60</duration>
-                #     </phase_durations>
-                #
-                # self.phase0_duration = QLineEdit()
-                default_sval = '0.0'
-
-                #  duration times: set default values for all params
-                        # self.cycle_live_duration00 = QLineEdit()
-                        # self.cycle_Ki67_duration01 = QLineEdit()
-                        # self.cycle_Ki67_duration10 = QLineEdit()
-                        # self.cycle_advancedKi67_duration01 = QLineEdit()
-                        # self.cycle_advancedKi67_duration12 = QLineEdit()
-                        # self.cycle_advancedKi67_duration20 = QLineEdit()
-                        # self.cycle_flowcyto_duration01 = QLineEdit()
-                        # self.cycle_flowcyto_duration12 = QLineEdit()
-                        # self.cycle_flowcyto_duration20 = QLineEdit()
-                        # self.cycle_flowcytosep_duration01 = QLineEdit()
-                        # self.cycle_flowcytosep_duration12 = QLineEdit()
-                        # self.cycle_flowcytosep_duration23 = QLineEdit()
-                        # self.cycle_flowcytosep_duration30 = QLineEdit()
-                        # self.cycle_quiescent_duration01 = QLineEdit()
-                        # self.cycle_quiescent_duration10 = QLineEdit()
-
-                self.param_d[cell_def_name]['cycle_live_duration00'] = default_sval
-
-                self.param_d[cell_def_name]['cycle_Ki67_duration01'] = default_sval
-                self.param_d[cell_def_name]['cycle_Ki67_duration10'] = default_sval
-
-                self.param_d[cell_def_name]['cycle_advancedKi67_duration01'] = default_sval
-                self.param_d[cell_def_name]['cycle_advancedKi67_duration12'] = default_sval
-                self.param_d[cell_def_name]['cycle_advancedKi67_duration20'] = default_sval
-
-                self.param_d[cell_def_name]['cycle_flowcyto_duration01'] = default_sval
-                self.param_d[cell_def_name]['cycle_flowcyto_duration12'] = default_sval
-                self.param_d[cell_def_name]['cycle_flowcyto_duration20'] = default_sval
-
-                self.param_d[cell_def_name]['cycle_flowcytosep_duration00'] = default_sval
-                self.param_d[cell_def_name]['cycle_flowcytosep_duration01'] = default_sval
-                self.param_d[cell_def_name]['cycle_flowcytosep_duration12'] = default_sval
-                self.param_d[cell_def_name]['cycle_flowcytosep_duration23'] = default_sval
-                self.param_d[cell_def_name]['cycle_flowcytosep_duration30'] = default_sval
-
-                self.param_d[cell_def_name]['cycle_quiescent_duration01'] = default_sval
-                self.param_d[cell_def_name]['cycle_quiescent_duration10'] = default_sval
-
-                #  duration: set default values for all "fixed_duration" checkboxes
-                default_bval = False
-                self.param_d[cell_def_name]['cycle_live_duration00_fixed'] = default_bval
-
-                self.param_d[cell_def_name]['cycle_Ki67_duration01_fixed'] = default_bval
-                self.param_d[cell_def_name]['cycle_Ki67_duration10_fixed'] = default_bval
-
-                self.param_d[cell_def_name]['cycle_advancedKi67_duration01_fixed'] = default_bval
-                self.param_d[cell_def_name]['cycle_advancedKi67_duration12_fixed'] = default_bval
-                self.param_d[cell_def_name]['cycle_advancedKi67_duration20_fixed'] = default_bval
-
-                self.param_d[cell_def_name]['cycle_flowcyto_duration01_fixed'] = default_bval
-                self.param_d[cell_def_name]['cycle_flowcyto_duration12_fixed'] = default_bval
-                self.param_d[cell_def_name]['cycle_flowcyto_duration20_fixed'] = default_bval
-
-                self.param_d[cell_def_name]['cycle_flowcytosep_duration01_fixed'] = default_bval
-                self.param_d[cell_def_name]['cycle_flowcytosep_duration12_fixed'] = default_bval
-                self.param_d[cell_def_name]['cycle_flowcytosep_duration23_fixed'] = default_bval
-                self.param_d[cell_def_name]['cycle_flowcytosep_duration30_fixed'] = default_bval
-
-                self.param_d[cell_def_name]['cycle_quiescent_duration01_fixed'] = default_bval
-                self.param_d[cell_def_name]['cycle_quiescent_duration10_fixed'] = default_bval
-
-                phase_durations_path = cycle_path + "//phase_durations"
-                print(' >> phase_durations_path =',phase_durations_path )
-                pd_uep = uep.find(phase_durations_path)
-                print(' >> pd_uep =',pd_uep )
-                if pd_uep:
-                    self.cycle_rb2.setChecked(True)
-                    self.param_d[cell_def_name]['cycle_duration_flag'] = True
-                    self.cycle_duration_flag = True   # rwh: TODO - why do this??
-                    self.customize_cycle_choices()
-
-                # if cycle_code == 0: #'advanced Ki67'
-                # elif cycle_code == 1: # 'basic Ki67'
-                # elif cycle_code == 2: # 'flow cytometry'
-                # elif cycle_code == 5: # 'live cells'
-                # elif cycle_code == 6: # 'flow cytometry separated'
-                # elif cycle_code == 7: # 'cycling quiescent'
-
-                    for pd in pd_uep:   # phase_duration
-                        print(pd)
-                        # print("index=",pd.attrib["index"])
-                        sval = pd.text
-
-                        if (pd.attrib['index'] == "0"): 
-                            if cycle_code == 0: #'advanced Ki67'
-                                self.param_d[cell_def_name]['cycle_advancedKi67_duration01'] = sval
-                                if (pd.attrib['fixed_duration'].lower() == "true"): 
-                                    self.param_d[cell_def_name]['cycle_advancedKi67_duration01_fixed'] = True
-                            elif cycle_code == 1: # 'basic Ki67'
-                                self.param_d[cell_def_name]['cycle_Ki67_duration01'] = sval
-                                if (pd.attrib['fixed_duration'].lower() == "true"): 
-                                    self.param_d[cell_def_name]['cycle_Ki67_duration01_fixed'] = True
-                            elif cycle_code == 2: # 'flow cytometry'
-                                self.param_d[cell_def_name]['cycle_flowcyto_duration01'] = sval
-                                if (pd.attrib['fixed_duration'].lower() == "true"): 
-                                    self.param_d[cell_def_name]['cycle_flowcyto_duration01_fixed'] = True
-                            elif cycle_code == 5: # 'live'
-                                self.param_d[cell_def_name]['cycle_live_duration00'] = sval
-                                if (pd.attrib['fixed_duration'].lower() == "true"): 
-                                    self.param_d[cell_def_name]['cycle_live_duration00_fixed'] = True
-                            elif cycle_code == 6: # 'flow cytometry separated'
-                                self.param_d[cell_def_name]['cycle_flowcytosep_duration01'] = sval
-                                if (pd.attrib['fixed_duration'].lower() == "true"): 
-                                    self.param_d[cell_def_name]['cycle_flowcytosep_duration01_fixed'] = True
-                            elif cycle_code == 7: # 'cycling quiescent'
-                                self.param_d[cell_def_name]['cycle_quiescent_duration01'] = sval
-                                if (pd.attrib['fixed_duration'].lower() == "true"): 
-                                    self.param_d[cell_def_name]['cycle_quiescent_duration01_fixed'] = True
-
-                        elif (pd.attrib['index'] == "1"):
-                            if cycle_code == 0: #'advanced Ki67'
-                                self.param_d[cell_def_name]['cycle_advancedKi67_duration12'] = sval
-                                if (pd.attrib['fixed_duration'].lower() == "true"): 
-                                    self.param_d[cell_def_name]['cycle_advancedKi67_duration12_fixed'] = True
-                            elif cycle_code == 1: #'basic Ki67'
-                                self.param_d[cell_def_name]['cycle_Ki67_duration10'] = sval
-                                if (pd.attrib['fixed_duration'].lower() == "true"): 
-                                    self.param_d[cell_def_name]['cycle_Ki67_duration10_fixed'] = True
-                            elif cycle_code == 2: # 'flow cytometry'
-                                self.param_d[cell_def_name]['cycle_flowcyto_duration12'] = sval
-                                if (pd.attrib['fixed_duration'].lower() == "true"): 
-                                    self.param_d[cell_def_name]['cycle_flowcyto_duration12_fixed'] = True
-                            elif cycle_code == 6: # 'flow cytometry separated'
-                                self.param_d[cell_def_name]['cycle_flowcytosep_duration12'] = sval
-                                if (pd.attrib['fixed_duration'].lower() == "true"): 
-                                    self.param_d[cell_def_name]['cycle_flowcytosep_duration12_fixed'] = True
-                            elif cycle_code == 7: # 'cycling quiescent'
-                                self.param_d[cell_def_name]['cycle_quiescent_duration10'] = sval
-                                if (pd.attrib['fixed_duration'].lower() == "true"): 
-                                    self.param_d[cell_def_name]['cycle_quiescent_duration10_fixed'] = True
-
-                        elif (pd.attrib['index'] == "2"):
-                            if cycle_code == 0: #'advanced Ki67'
-                                self.param_d[cell_def_name]['cycle_advancedKi67_duration20'] = sval
-                                if (pd.attrib['fixed_duration'].lower() == "true"): 
-                                    self.param_d[cell_def_name]['cycle_advancedKi67_duration20_fixed'] = True
-                            elif cycle_code == 2: # 'flow cytometry'
-                                self.param_d[cell_def_name]['cycle_flowcyto_duration20'] = sval
-                                if (pd.attrib['fixed_duration'].lower() == "true"): 
-                                    self.param_d[cell_def_name]['cycle_flowcyto_duration20_fixed'] = True
-                            elif cycle_code == 6: # 'flow cytometry separated'
-                                self.param_d[cell_def_name]['cycle_flowcytosep_duration23'] = sval
-                                if (pd.attrib['fixed_duration'].lower() == "true"): 
-                                    self.param_d[cell_def_name]['cycle_flowcytosep_duration23_fixed'] = True
-
-                        elif (pd.attrib['index'] == "3"):
-                            self.param_d[cell_def_name]['cycle_flowcytosep_duration30'] = sval
-                            if (pd.attrib['fixed_duration'].lower() == "true"): 
-                                self.param_d[cell_def_name]['cycle_flowcytosep_duration30_fixed'] = True
-
-
-                # rf. microenv:
-                # self.cell_type_name.setText(var.attrib['name'])
-                # self.diffusion_coef.setText(vp[0].find('.//diffusion_coefficient').text)
-
-                # ------------------ cell_definition: default
-                # ---------  cycle (live)
-                # self.float0.value = float(uep.find('.//cell_definition[1]//phenotype//cycle//phase_transition_rates//rate[1]').text)
-
-                self.param_d[cell_def_name]['cycle_live_duration00'] = default_sval
-
-                # ---------  death 
-                print("\n===== populate_tree():  death")
-
-                        #------ using transition_rates
-                        # <death> 
-                        #   <model code="100" name="apoptosis"> 
-                            #     <death_rate units="1/min">0</death_rate>  
-                            #     <phase_transition_rates units="1/min">
-                            #         <rate start_index="0" end_index="1" fixed_duration="true">0.00193798</rate>
-                            #     </phase_transition_rates>
-                            #     <parameters>
-                            #         <unlysed_fluid_change_rate units="1/min">0.05</unlysed_fluid_change_rate>
-                            #         <lysed_fluid_change_rate units="1/min">0</lysed_fluid_change_rate>
-                            #         <cytoplasmic_biomass_change_rate units="1/min">1.66667e-02</cytoplasmic_biomass_change_rate>
-                            #         <nuclear_biomass_change_rate units="1/min">5.83333e-03</nuclear_biomass_change_rate>
-                            #         <calcification_rate units="1/min">0</calcification_rate>
-                            #         <relative_rupture_volume units="dimensionless">2.0</relative_rupture_volume>
-                            #     </parameters>
-                            # </model> 
-                        #   <model code="101" name="necrosis">
-
-                        #------ using durations
-                        # <death>  
-                        # 	<model code="100" name="apoptosis"> 
-                        # 		<death_rate units="1/min">5.1e-05</death_rate>
-                        # 		<phase_durations units="min">
-                        # 			<duration index="0" fixed_duration="true">511</duration>
-                        # 		</phase_durations>
-                        # 		<parameters>
-                        # 			<unlysed_fluid_change_rate units="1/min">0.01</unlysed_fluid_change_rate>
-                        # 			<lysed_fluid_change_rate units="1/min">1.e-99</lysed_fluid_change_rate>
-                        # 			<cytoplasmic_biomass_change_rate units="1/min">1.61e-02</cytoplasmic_biomass_change_rate>
-                        # 			<nuclear_biomass_change_rate units="1/min">5.81e-03</nuclear_biomass_change_rate>
-                        # 			<calcification_rate units="1/min">0</calcification_rate>
-                        # 			<relative_rupture_volume units="dimensionless">2.1</relative_rupture_volume>
-                        # 		</parameters>
-                        # 	</model> 
-
-                        # 	<model code="101" name="necrosis">
-                        # 		<death_rate units="1/min">0.1</death_rate>
-                        # 		<phase_durations units="min">
-                        # 			<duration index="0" fixed_duration="true">0.1</duration>
-                        # 			<duration index="1" fixed_duration="true">86400.1</duration>
-                        # 		</phase_durations>
-
-
-                death_path = ".//cell_definition[" + str(idx) + "]//phenotype//death//"
-
-                self.param_d[cell_def_name]['apoptosis_duration_flag'] = False
-                self.param_d[cell_def_name]["apoptosis_phase0_duration"] = "0.0"
-                self.param_d[cell_def_name]["apoptosis_phase0_fixed"] = False
-                self.param_d[cell_def_name]["apoptosis_trate01"] = "0.0"
-                self.param_d[cell_def_name]["apoptosis_trate01_fixed"] = False
-
-                self.param_d[cell_def_name]['necrosis_duration_flag'] = False
-                self.param_d[cell_def_name]["necrosis_phase0_duration"] = "0.0"
-                self.param_d[cell_def_name]["necrosis_phase0_fixed"] = False
-                self.param_d[cell_def_name]["necrosis_phase1_duration"] = "0.0"
-                self.param_d[cell_def_name]["necrosis_phase1_fixed"] = False
-                self.param_d[cell_def_name]["necrosis_trate01"] = "0.0"
-                self.param_d[cell_def_name]["necrosis_trate01_fixed"] = False
-                self.param_d[cell_def_name]["necrosis_trate12"] = "0.0"
-                self.param_d[cell_def_name]["necrosis_trate12_fixed"] = False
-
-                # uep = self.xml_root.find('.//microenvironment_setup')  # find unique entry point
-                death_uep = uep.find(".//cell_definition[" + str(idx) + "]//phenotype//death")
-                print('death_uep=',death_uep)
-
-                for death_model in death_uep.findall('model'):
-                    if "apoptosis" in death_model.attrib["name"].lower():
-                        print("-------- parsing apoptosis!")
-                        self.param_d[cell_def_name]["apoptosis_death_rate"] = death_model.find('death_rate').text
-
-                        # 	<model code="100" name="apoptosis"> 
-                        # 		<death_rate units="1/min">5.1e-05</death_rate>
-                        # 		<phase_durations units="min">
-                        # 			<duration index="0" fixed_duration="true">511</duration>
-                        # 		</phase_durations>
-                        # 		<parameters>
-                        # 			<unlysed_fluid_change_rate units="1/min">0.01</unlysed_fluid_change_rate>
-                        pd_uep = death_model.find("phase_durations")
-                        if pd_uep is not None:
-                            print(' >> pd_uep =',pd_uep )
-                            self.param_d[cell_def_name]['apoptosis_duration_flag'] = True
-                            # self.apoptosis_rb2.setChecked(True)  # duration
-
-                            for pd in pd_uep:   # <duration index= ... >
-                                print(pd)
-                                print("index=",pd.attrib["index"])
-                                if  pd.attrib['index'] == "0":
-                                    self.param_d[cell_def_name]["apoptosis_phase0_duration"] = pd.text
-                                    if  pd.attrib['fixed_duration'].lower() == "true":
-                                        self.param_d[cell_def_name]["apoptosis_phase0_fixed"] = True
-                                    else:
-                                        self.param_d[cell_def_name]["apoptosis_phase0_fixed"] = False
-
-                        else:  #  transition rates
-                            #     <phase_transition_rates units="1/min">
-                            #         <rate start_index="0" end_index="1" fixed_duration="true">0.00193798</rate>
-                            #     </phase_transition_rates>
-                            tr_uep = death_model.find("phase_transition_rates")
-                            if tr_uep is not None:
-                                print(' >> tr_uep =',tr_uep )
-                                # self.apoptosis_rb1.setChecked(True)  # trate01
-
-                                for tr in tr_uep:   # <duration index= ... >
-                                    print(tr)
-                                    print("start_index=",tr.attrib["start_index"])
-
-                                    if  tr.attrib['start_index'] == "0":
-                                        self.param_d[cell_def_name]["apoptosis_trate01"] = tr.text
-                                        if  tr.attrib['fixed_duration'].lower() == "true":
-                                            self.param_d[cell_def_name]["apoptosis_trate01_fixed"] = True
-                                        else:
-                                            self.param_d[cell_def_name]["apoptosis_trate01_fixed"] = False
-
-                        # apoptosis_params_path = apoptosis_path + "parameters//"
-                        params_uep = death_model.find("parameters")
-                        # apoptosis_params_path = apoptosis_path + "parameters//"
-
-                        # self.param_d[cell_def_name]["apoptosis_unlysed_rate"] = params_uep.find("unlysed_fluid_change_rate").text
-                        self.param_d[cell_def_name]["apoptosis_unlysed_rate"] = params_uep.find("unlysed_fluid_change_rate").text
-                        self.param_d[cell_def_name]["apoptosis_lysed_rate"] = params_uep.find("lysed_fluid_change_rate").text
-                        self.param_d[cell_def_name]["apoptosis_cyto_rate"] = params_uep.find("cytoplasmic_biomass_change_rate").text
-                        self.param_d[cell_def_name]["apoptosis_nuclear_rate"] = params_uep.find("nuclear_biomass_change_rate").text
-                        self.param_d[cell_def_name]["apoptosis_calcif_rate"] = params_uep.find("calcification_rate").text
-                        self.param_d[cell_def_name]["apoptosis_rel_rupture_volume"] = params_uep.find("relative_rupture_volume").text
-
-                #--------------
-                # necrosis_params_path = necrosis_path + "parameters//"
-                    elif "necrosis" in death_model.attrib["name"].lower():
-                        print("-------- parsing necrosis!")
-                        self.param_d[cell_def_name]["necrosis_death_rate"] = death_model.find('death_rate').text
-
-                        pd_uep = death_model.find("phase_durations")
-                        if pd_uep is not None:
-                            print(' >> pd_uep =',pd_uep )
-                            # self.necrosis_rb2.setChecked(True)  # duration
-                            self.param_d[cell_def_name]['necrosis_duration_flag'] = True
-
-                            for pd in pd_uep:   # <duration index= ... >
-                                print(pd)
-                                print("index=",pd.attrib["index"])
-                                if  pd.attrib['index'] == "0":
-                                    self.param_d[cell_def_name]["necrosis_phase0_duration"] = pd.text
-                                    if  pd.attrib['fixed_duration'].lower() == "true":
-                                        self.param_d[cell_def_name]["necrosis_phase0_fixed"] = True
-                                    else:
-                                        self.param_d[cell_def_name]["necrosis_phase0_fixed"] = False
-                                elif  pd.attrib['index'] == "1":
-                                    self.param_d[cell_def_name]["necrosis_phase1_duration"] = pd.text
-                                    if  pd.attrib['fixed_duration'].lower() == "true":
-                                        self.param_d[cell_def_name]["necrosis_phase1_fixed"] = True
-                                    else:
-                                        self.param_d[cell_def_name]["necrosis_phase1_fixed"] = False
-
-                        else:  # transition rates
-                            #     <phase_transition_rates units="1/min">
-                            #         <rate start_index="0" end_index="1" fixed_duration="true">0.00193798</rate>
-                            #     </phase_transition_rates>
-                            tr_uep = death_model.find("phase_transition_rates")
-                            if tr_uep is not None:
-                                print(' >> tr_uep =',tr_uep )
-                                # self.necrosis_rb1.setChecked(True)  
-                                for tr in tr_uep:  # transition rate 
-                                    print(tr)
-                                    print("start_index=",tr.attrib["start_index"])
-                                    if  tr.attrib['start_index'] == "0":
-                                        rate = float(tr.text)
-                                        print(" --- transition rate (float) = ",rate)
-                                        if abs(rate) < 1.e-6:
-                                            dval = 9.e99
-                                        else:
-                                            dval = rate * 60.0
-                                        print(" --- transition rate (float) = ",rate)
-                                        # self.param_d[cell_def_name]["necrosis_phase0_duration"] = tr.text
-                                        self.param_d[cell_def_name]["necrosis_phase0_duration"] = str(dval)
-                                        if  tr.attrib['fixed_duration'].lower() == "true":
-                                            self.param_d[cell_def_name]["necrosis_phase0_fixed"] = True
-                                        else:
-                                            self.param_d[cell_def_name]["necrosis_phase0_fixed"] = False
-                                    elif  tr.attrib['start_index'] == "1":
-                                        self.param_d[cell_def_name]["necrosis_phase1_duration"] = tr.text
-                                        if  tr.attrib['fixed_duration'].lower() == "true":
-                                            self.param_d[cell_def_name]["necrosis_phase1_fixed"] = True
-                                        else:
-                                            self.param_d[cell_def_name]["necrosis_phase1_fixed"] = False
-
-
-                        params_uep = death_model.find("parameters")
-
-                        self.param_d[cell_def_name]["necrosis_unlysed_rate"] = params_uep.find("unlysed_fluid_change_rate").text
-                        self.param_d[cell_def_name]["necrosis_lysed_rate"] = params_uep.find("lysed_fluid_change_rate").text
-                        self.param_d[cell_def_name]["necrosis_cyto_rate"] = params_uep.find("cytoplasmic_biomass_change_rate").text
-                        self.param_d[cell_def_name]["necrosis_nuclear_rate"] = params_uep.find("nuclear_biomass_change_rate").text
-                        self.param_d[cell_def_name]["necrosis_calcif_rate"] = params_uep.find("calcification_rate").text
-                        self.param_d[cell_def_name]["necrosis_rel_rupture_rate"] = params_uep.find("relative_rupture_volume").text
-
-
-                # # ---------  volume 
-                        # <volume>  
-                        # 	<total units="micron^3">2494</total>
-                        # 	<fluid_fraction units="dimensionless">0.75</fluid_fraction>
-                        # 	<nuclear units="micron^3">540</nuclear>
-                            
-                        # 	<fluid_change_rate units="1/min">0.05</fluid_change_rate>
-                        # 	<cytoplasmic_biomass_change_rate units="1/min">0.0045</cytoplasmic_biomass_change_rate>
-                        # 	<nuclear_biomass_change_rate units="1/min">0.0055</nuclear_biomass_change_rate>
-                            
-                        # 	<calcified_fraction units="dimensionless">0</calcified_fraction>
-                        # 	<calcification_rate units="1/min">0</calcification_rate>
-                            
-                        # 	<relative_rupture_volume units="dimensionless">2.0</relative_rupture_volume>
-
-                volume_path = ".//cell_definition[" + str(idx) + "]//phenotype//volume//"
-                print('volume_path=',volume_path)
-
-                # self.volume_total.setText(uep.find(volume_path+"total").text)
-                # self.volume_fluid_fraction.setText(uep.find(volume_path+"fluid_fraction").text)
-                # self.volume_nuclear.setText(uep.find(volume_path+"nuclear").text)
-                # self.volume_fluid_change_rate.setText(uep.find(volume_path+"fluid_change_rate").text)
-                # self.volume_cytoplasmic_biomass_change_rate.setText(uep.find(volume_path+"cytoplasmic_biomass_change_rate").text)
-                # self.volume_nuclear_biomass_change_rate.setText(uep.find(volume_path+"nuclear_biomass_change_rate").text)
-                # self.volume_calcified_fraction.setText(uep.find(volume_path+"calcified_fraction").text)
-                # self.volume_calcification_rate.setText(uep.find(volume_path+"calcification_rate").text)
-                # self.relative_rupture_volume.setText(uep.find(volume_path+"relative_rupture_volume").text)
-
-                self.param_d[cell_def_name]["volume_total"] = uep.find(volume_path+"total").text
-                self.param_d[cell_def_name]["volume_fluid_fraction"] = uep.find(volume_path+"fluid_fraction").text
-                self.param_d[cell_def_name]["volume_nuclear"] = uep.find(volume_path+"nuclear").text
-                self.param_d[cell_def_name]["volume_fluid_change_rate"] = uep.find(volume_path+"fluid_change_rate").text
-                self.param_d[cell_def_name]["volume_cytoplasmic_rate"] = uep.find(volume_path+"cytoplasmic_biomass_change_rate").text
-                self.param_d[cell_def_name]["volume_nuclear_rate"] = uep.find(volume_path+"nuclear_biomass_change_rate").text
-                self.param_d[cell_def_name]["volume_calcif_fraction"] = uep.find(volume_path+"calcified_fraction").text
-                self.param_d[cell_def_name]["volume_calcif_rate"] = uep.find(volume_path+"calcification_rate").text
-                self.param_d[cell_def_name]["volume_rel_rupture_vol"] = uep.find(volume_path+"relative_rupture_volume").text
-
-
-                # # ---------  mechanics 
-                print("\n===== populate_tree():  mechanics")
-                        # <mechanics> 
-                        # 	<cell_cell_adhesion_strength units="micron/min">0.4</cell_cell_adhesion_strength>
-                        # 	<cell_cell_repulsion_strength units="micron/min">10.0</cell_cell_repulsion_strength>
-                        # 	<relative_maximum_adhesion_distance units="dimensionless">1.25</relative_maximum_adhesion_distance>
-                            
-                        # 	<options>
-                        # 		<set_relative_equilibrium_distance enabled="false" units="dimensionless">1.8</set_relative_equilibrium_distance>
-                        # 		<set_absolute_equilibrium_distance enabled="false" units="micron">15.12</set_absolute_equilibrium_distance>
-                        # 	</options>
-
-                mechanics_path = ".//cell_definition[" + str(idx) + "]//phenotype//mechanics//"
-                print('mechanics_path=',mechanics_path)
-
-                # self.cell_cell_adhesion_strength.setText(uep.find(mechanics_path+"cell_cell_adhesion_strength").text)
-                # self.cell_cell_repulsion_strength.setText(uep.find(mechanics_path+"cell_cell_repulsion_strength").text)
-                val =  uep.find(mechanics_path+"cell_cell_adhesion_strength").text
-                self.param_d[cell_def_name]["mechanics_adhesion"] = val
-
-                val =  uep.find(mechanics_path+"cell_cell_repulsion_strength").text
-                self.param_d[cell_def_name]["mechanics_repulsion"] = val
-
-                val =  uep.find(mechanics_path+"relative_maximum_adhesion_distance").text
-                self.param_d[cell_def_name]["mechanics_adhesion_distance"] = val
-
-                # self.relative_maximum_adhesion_distance.setText(uep.find(mechanics_path+"relative_maximum_adhesion_distance").text)
-
-                mechanics_options_path = ".//cell_definition[" + str(idx) + "]//phenotype//mechanics//options//"
-                # self.set_relative_equilibrium_distance.setText(uep.find(mechanics_options_path+"set_relative_equilibrium_distance").text)
-
-                # self.set_absolute_equilibrium_distance.setText(uep.find(mechanics_options_path+"set_absolute_equilibrium_distance").text)
-
-                val =  uep.find(mechanics_options_path+"set_relative_equilibrium_distance").text
-                self.param_d[cell_def_name]["mechanics_relative_equilibrium_distance"] = val
-
-                val =  uep.find(mechanics_options_path+"set_absolute_equilibrium_distance").text
-                self.param_d[cell_def_name]["mechanics_absolute_equilibrium_distance"] = val
-
-                if uep.find(mechanics_options_path+"set_relative_equilibrium_distance").attrib['enabled'].lower() == 'true':
-                    self.param_d[cell_def_name]["mechanics_relative_equilibrium_distance_enabled"] = True
-                else:
-                    self.param_d[cell_def_name]["mechanics_relative_equilibrium_distance_enabled"] = False
-
-                if uep.find(mechanics_options_path+"set_absolute_equilibrium_distance").attrib['enabled'].lower() == 'true':
-                    self.param_d[cell_def_name]["mechanics_absolute_equilibrium_distance_enabled"] = True
-                else:
-                    self.param_d[cell_def_name]["mechanics_absolute_equilibrium_distance_enabled"] = False
-
-
-                # # ---------  motility 
-                print("\n===== populate_tree():  motility")
-                        # <motility>  
-                        # 	<speed units="micron/min">5.0</speed>
-                        # 	<persistence_time units="min">5.0</persistence_time>
-                        # 	<migration_bias units="dimensionless">0.5</migration_bias>
-                            
-                        # 	<options>
-                        # 		<enabled>true</enabled>
-                        # 		<use_2D>true</use_2D>
-                        # 		<chemotaxis>
-                        # 			<enabled>false</enabled>
-                        # 			<substrate>director signal</substrate>
-                        # 			<direction>1</direction>
-                        # 		</chemotaxis>
-                        # 	</options>
-
-                motility_path = ".//cell_definition[" + str(idx) + "]//phenotype//motility//"
-                print('motility_path=',motility_path)
-
-                val = uep.find(motility_path+"speed").text
-                self.param_d[cell_def_name]["speed"] = val
-
-                val = uep.find(motility_path+"persistence_time").text
-                self.param_d[cell_def_name]["persistence_time"] = val
-
-                val = uep.find(motility_path+"migration_bias").text
-                self.param_d[cell_def_name]["migration_bias"] = val
-
-                motility_options_path = ".//cell_definition[" + str(idx) + "]//phenotype//motility//options//"
-
-                # print(' motility options enabled', uep.find(motility_options_path +'enabled').text)
-                if uep.find(motility_options_path +'enabled').text.lower() == 'true':
-                    self.param_d[cell_def_name]["motility_enabled"] = True
-                else:
-                    self.param_d[cell_def_name]["motility_enabled"] = False
-
-                if uep.find(motility_options_path +'use_2D').text.lower() == 'true':
-                    self.param_d[cell_def_name]["motility_use_2D"] = True
-                else:
-                    self.param_d[cell_def_name]["motility_use_2D"] = False
-
-                        # 		<chemotaxis>
-                        # 			<enabled>false</enabled>
-                        # 			<substrate>director signal</substrate>
-                        # 			<direction>1</direction>
-                        # 		</chemotaxis>
-                motility_chemotaxis_path = motility_options_path + "chemotaxis//"
-                if uep.find(motility_chemotaxis_path) is None:
-                    self.param_d[cell_def_name]["motility_chemotaxis"] = False
-                    self.param_d[cell_def_name]["motility_chemotaxis_substrate"] = ""
-                    self.param_d[cell_def_name]["motility_chemotaxis_towards"] = True
-                else:
-                    if uep.find(motility_chemotaxis_path +'enabled').text.lower() == 'true':
-                        self.param_d[cell_def_name]["motility_chemotaxis"] = True
-                    else:
-                        self.param_d[cell_def_name]["motility_chemotaxis"] = False
-
-                    val = uep.find(motility_chemotaxis_path +'substrate').text
-                    self.param_d[cell_def_name]["motility_chemotaxis_substrate"] = val
-
-                    val = uep.find(motility_chemotaxis_path +'direction').text
-                    if val == '1':
-                        self.param_d[cell_def_name]["motility_chemotaxis_towards"] = True
-                    else:
-                        self.param_d[cell_def_name]["motility_chemotaxis_towards"] = False
-
-
-                # # ---------  secretion 
-                print("\n===== populate_tree():  secretion")
-
-                # <substrate name="virus">
-                #     <secretion_rate units="1/min">0</secretion_rate>
-                #     <secretion_target units="substrate density">1</secretion_target>
-                #     <uptake_rate units="1/min">10</uptake_rate>
-                #     <net_export_rate units="total substrate/min">0</net_export_rate> 
-                # </substrate> 
-
-                secretion_path = ".//cell_definition[" + str(idx) + "]//phenotype//secretion//"
-                print('secretion_path =',secretion_path)
-                secretion_sub1_path = ".//cell_definition[" + str(idx) + "]//phenotype//secretion//substrate[1]//"
-
-                uep_secretion = self.xml_root.find(".//cell_definitions//cell_definition[" + str(idx) + "]//phenotype//secretion")
-                print('uep_secretion = ',uep_secretion )
-                
-
-                # e.g.: param_d["cancer cell"]["oxygen"]["secretion_rate"] = 0.0
-                # or,   param_d["cancer cell"]["oxygen"]["secretion_rate"] = 0.0
-                # or,   param_d["cancer cell"]["secretion"] = {"oxygen" : { "secretion_rate" : 42.0 } }
-                self.param_d[cell_def_name]["secretion"] = {}  # a dict for these params
-
-                # Initialize (set to 0.0) all substrates' secretion params
-                # val = "0.0"
-                # print('----- populate_tree: self.substrate_list = ',self.substrate_list )
-                # for substrate_name in self.substrate_list:
-                #     print('----- populate_tree: substrate_name = ',substrate_name )
-                #     self.param_d[cell_def_name]["secretion"][substrate_name]["secretion_rate"] = val
-                #     self.param_d[cell_def_name]["secretion"][substrate_name]["secretion_target"] = val
-                #     self.param_d[cell_def_name]["secretion"][substrate_name]["uptake_rate"] = val
-                #     self.param_d[cell_def_name]["secretion"][substrate_name]["net_export_rate"] = val
-                # foo = 1/0
-
-
-                jdx = 0
-                for sub in uep_secretion.findall('substrate'):
-                    substrate_name = sub.attrib['name']
-                    if jdx == 0:
-                        self.current_secretion_substrate = substrate_name
-
-                    print(jdx,") -- secretion substrate = ",substrate_name)
-                    # self.param_d[self.current_cell_def]["secretion"][substrate_name]["secretion_rate"] = {}
-                    self.param_d[cell_def_name]["secretion"][substrate_name] = {}
-
-                    tptr = sub.find("secretion_rate")
-                    if tptr is not None:
-                        val = tptr.text
-                    else:
-                        val = "0.0"
-                    self.param_d[cell_def_name]["secretion"][substrate_name]["secretion_rate"] = val
-                    # print(self.param_d[cell_def_name]["secretion"][substrate_name] )
-
-                    tptr = sub.find("secretion_target")
-                    if tptr is not None:
-                        val = tptr.text
-                    else:
-                        val = "0.0"
-                    self.param_d[cell_def_name]["secretion"][substrate_name]["secretion_target"] = val
-
-                    tptr = sub.find("uptake_rate")
-                    if tptr is not None:
-                        val = tptr.text
-                    else:
-                        val = "0.0"
-                    self.param_d[cell_def_name]["secretion"][substrate_name]["uptake_rate"] = val
-
-                    tptr = sub.find("net_export_rate")
-                    if tptr is not None:
-                        val = tptr.text
-                    else:
-                        val = "0.0"
-                    self.param_d[cell_def_name]["secretion"][substrate_name]["net_export_rate"] = val
-
-                    jdx += 1
-
-                print("------ done parsing secretion:")
-                # print("------ self.param_d = ",self.param_d)
-                
-
-                # # ---------  molecular 
-                print("\n===== populate_tree():  molecular")
-
-
-                # # ---------  custom data 
-                print("\n===== populate_tree():  custom data")
-                # <custom_data>  
-                # 	<receptor units="dimensionless">0.0</receptor>
-                # 	<cargo_release_o2_threshold units="mmHg">10</cargo_release_o2_threshold>
-
-                uep_custom_data = self.xml_root.find(".//cell_definitions//cell_definition[" + str(idx) + "]//custom_data")
-                # custom_data_path = ".//cell_definition[" + str(self.idx_current_cell_def) + "]//custom_data//"
-                print('uep_custom_data=',uep_custom_data)
-
-                # for jdx in range(self.custom_data_count):
-                #     self.custom_data_name[jdx].setText('')
-                #     self.custom_data_value[jdx].setText('')
-                    
-
-                jdx = 0
-                # rwh/TODO: if we have more vars than we initially created rows for, we'll need
-                # to call 'append_more_cb' for the excess.
-                self.custom_data_count = 0
-                if uep_custom_data:
-                    # print("--------------- populate_tree: custom_dat for cell_def_name= ",cell_def_name)
-                    self.param_d[cell_def_name]['custom_data'] = {}
-                    for var in uep_custom_data:
-                        # print(jdx, ") ",var)
-                        # val = sub.find("secretion_rate").text
-                        val = var.text
-                        # print("tag= ",var.tag)
-                        # print("val= ",val)
-                        # self.param_d[cell_def_name]["secretion"][substrate_name]["secretion_rate"] = val
-                        self.param_d[cell_def_name]['custom_data'][var.tag] = val
-                        if var.tag not in self.master_custom_varname:
-                            self.master_custom_varname.append(var.tag)
-                        self.custom_data_count += 1
-                #     self.custom_data_name[jdx].setText(var.tag)
-                #     print("tag=",var.tag)
-                #     self.custom_data_value[jdx].setText(var.text)
-
-                #     if 'units' in var.keys():
-                #         self.custom_data_units[jdx].setText(var.attrib['units'])
-                #     jdx += 1
-
-                    # print("--------- populate_tree: self.param_d[cell_def_name]['custom_data'] = ",self.param_d[cell_def_name]['custom_data'])
-
-
-        self.current_cell_def = cell_def_0th
-        self.tree.setCurrentItem(self.tree.topLevelItem(0))  # select the top (0th) item
-        self.tree_item_clicked_cb(self.tree.topLevelItem(0), 0)  # and have its params shown
-
-        # print("\n\n=======================  leaving cell_def populate_tree  ======================= ")
-        # print()
-        # for k in self.param_d.keys():
-        #     print(" ===>>> ",k, " : ", self.param_d[k])
-        #     print()
 
     #-------------------------------------------------------------------
     def first_cell_def_name(self):
@@ -5350,40 +5758,40 @@ class CellDef(QWidget):
         volume.text = self.indent12  # affects indent of child
         volume.tail = "\n" + self.indent10
 
-        elm = ET.SubElement(volume, 'total')
+        elm = ET.SubElement(volume, 'total',{"units":"micron^3"})
         elm.text = self.param_d[cdef]['volume_total']
         elm.tail = self.indent12
 
-        elm = ET.SubElement(volume, 'fluid_fraction')
+        elm = ET.SubElement(volume, 'fluid_fraction',{"units":"dimensionless"})
         elm.text = self.param_d[cdef]['volume_fluid_fraction']
         elm.tail = self.indent12
 
-        elm = ET.SubElement(volume, 'nuclear')
+        elm = ET.SubElement(volume, 'nuclear',{"units":"micron^3"})
         elm.text = self.param_d[cdef]['volume_nuclear']
         elm.tail = self.indent12
 
-        elm = ET.SubElement(volume, 'fluid_change_rate')
+        elm = ET.SubElement(volume, 'fluid_change_rate',{"units":"1/min"})
         elm.text = self.param_d[cdef]['volume_fluid_change_rate']
         elm.tail = self.indent12
 
-        elm = ET.SubElement(volume, 'cytoplasmic_biomass_change_rate')
+        elm = ET.SubElement(volume, 'cytoplasmic_biomass_change_rate',{"units":"1/min"})
         # elm.text = self.param_d[cdef]['volume_cytoplasmic_biomass_change_rate']
         elm.text = self.param_d[cdef]['volume_cytoplasmic_rate']
         elm.tail = self.indent12
 
-        elm = ET.SubElement(volume, 'nuclear_biomass_change_rate')
+        elm = ET.SubElement(volume, 'nuclear_biomass_change_rate',{"units":"1/min"})
         elm.text = self.param_d[cdef]['volume_nuclear_rate']
         elm.tail = self.indent12
 
-        elm = ET.SubElement(volume, 'calcified_fraction')
+        elm = ET.SubElement(volume, 'calcified_fraction',{"units":"dimensionless"})
         elm.text = self.param_d[cdef]['volume_calcif_fraction']
         elm.tail = self.indent12
 
-        elm = ET.SubElement(volume, 'calcification_rate')
+        elm = ET.SubElement(volume, 'calcification_rate',{"units":"1/min"})
         elm.text = self.param_d[cdef]['volume_calcif_rate']
         elm.tail = self.indent12
 
-        elm = ET.SubElement(volume, 'relative_rupture_volume')
+        elm = ET.SubElement(volume, 'relative_rupture_volume',{"units":"dimensionless"})
         elm.text = self.param_d[cdef]['volume_rel_rupture_vol']
         elm.tail = self.indent10
 
@@ -5438,6 +5846,25 @@ class CellDef(QWidget):
         elm.text = self.param_d[cdef]['mechanics_adhesion_distance']
         elm.tail = self.indent12
 
+        #---
+                    # <cell_adhesion_affinities>
+	  				# 	<cell_adhesion_affinity name="bacteria">1</cell_adhesion_affinity> 
+        ca_rates = ET.SubElement(mechanics, "cell_adhesion_affinities")
+        ca_rates.text = self.indent16
+        # ca_rates.tail = "\n" + self.indent8
+        ca_rates.tail = self.indent12
+
+        print("--- cell_adhesion_affinity= ",self.param_d[cdef]['cell_adhesion_affinity'])
+        for key in self.param_d[cdef]['cell_adhesion_affinity'].keys():
+            # argh, not sure why this is necessary, but without it, we can get empty entries if we read in a saved mymodel.xml
+            if len(key) == 0:  
+                continue
+            val = self.param_d[cdef]['cell_adhesion_affinity'][key]
+            print(key," --> ",val)
+            elm = ET.SubElement(ca_rates, 'cell_adhesion_affinity', {"name":key})
+            elm.text = val
+            elm.tail = self.indent16
+
             # 	<options>
             # 		<set_relative_equilibrium_distance enabled="false" units="dimensionless">1.111</set_relative_equilibrium_distance>
             # 		<set_absolute_equilibrium_distance enabled="false" units="micron">11.111</set_absolute_equilibrium_distance>
@@ -5460,7 +5887,9 @@ class CellDef(QWidget):
             bval = "true"
         subelm = ET.SubElement(elm, 'set_absolute_equilibrium_distance',{"enabled":bval, "units":"micron"})
         subelm.text = self.param_d[cdef]['mechanics_absolute_equilibrium_distance'] 
-        subelm.tail = self.indent12
+        subelm.tail = self.indent14
+
+
 
     #-------------------------------------------------------------------
     # Read values from the GUI widgets and generate/write a new XML
@@ -5495,15 +5924,15 @@ class CellDef(QWidget):
         # else:
         #     self.chemotaxis_direction_against.setChecked(True)
 
-        elm = ET.SubElement(motility, 'speed')
+        elm = ET.SubElement(motility, 'speed',{"units":"micron/min"})
         elm.text = self.param_d[cdef]['speed']
         elm.tail = self.indent12
 
-        elm = ET.SubElement(motility, 'persistence_time')
+        elm = ET.SubElement(motility, 'persistence_time',{"units":"min"})
         elm.text = self.param_d[cdef]['persistence_time']
         elm.tail = self.indent12
         
-        elm = ET.SubElement(motility, 'migration_bias')
+        elm = ET.SubElement(motility, 'migration_bias',{"units":"dimensionless"})
         elm.text = self.param_d[cdef]['migration_bias']
         elm.tail = self.indent12
 
@@ -5527,7 +5956,7 @@ class CellDef(QWidget):
 
         taxis = ET.SubElement(options, 'chemotaxis')
         taxis.text = self.indent16
-        taxis.tail = self.indent12
+        taxis.tail = self.indent14
 
         bval = "false"
         if self.param_d[cdef]['motility_chemotaxis']:
@@ -5552,6 +5981,48 @@ class CellDef(QWidget):
         elm = ET.SubElement(taxis, 'direction')
         elm.text = direction
         elm.tail = self.indent14
+
+        #--------
+            # <advanced_chemotaxis>
+            #     <enabled>true</enabled>
+            #     <normalize_each_gradient>false</normalize_each_gradient>
+            #     <chemotactic_sensitivities>
+            #       <chemotactic_sensitivity substrate="resource">1</chemotactic_sensitivity> 
+            #       <chemotactic_sensitivity substrate="toxin">0</chemotactic_sensitivity> 
+        adv_taxis = ET.SubElement(options, 'advanced_chemotaxis')
+        adv_taxis.text = self.indent16
+        adv_taxis.tail = self.indent12
+
+        bval = "false"
+        if self.param_d[cdef]['motility_advanced_chemotaxis']:
+            bval = "true"
+        elm = ET.SubElement(adv_taxis, 'enabled')
+        elm.text = bval
+        elm.tail = self.indent16
+
+        bval = "false"
+        if self.param_d[cdef]['normalize_each_gradient']:
+            bval = "true"
+        elm = ET.SubElement(adv_taxis, 'normalize_each_gradient')
+        elm.text = bval
+        elm.tail = self.indent16
+
+        chemo_sens = ET.SubElement(adv_taxis, 'chemotactic_sensitivities')
+        chemo_sens.text = self.indent18
+        chemo_sens.tail = self.indent16
+
+                # self.param_d[cell_def_name]['chemotactic_sensitivity'][subname] = subval
+        print(self.param_d[cdef]['chemotactic_sensitivity'])
+        for key in self.param_d[cdef]['chemotactic_sensitivity'].keys():
+            #       <chemotactic_sensitivity substrate="resource">1</chemotactic_sensitivity> 
+        # elm = ET.Element("cell_definition",  {"name":cdef, "ID":self.param_d[cdef]["ID"]}) # retain info
+                        
+            val = self.param_d[cdef]['chemotactic_sensitivity'][key]
+            print(key," --> ",val)
+            elm = ET.SubElement(chemo_sens, 'chemotactic_sensitivity', {"substrate":key})
+            elm.text = val
+            elm.tail = self.indent18
+
 
     #-------------------------------------------------------------------
     # Read values from the GUI widgets and generate/write a new XML
@@ -5610,6 +6081,177 @@ class CellDef(QWidget):
         # self.secretion_net_export_rate.setText(self.param_d[cdname]["secretion"][self.current_secretion_substrate]["net_export_rate"])
 
     #-------------------------------------------------------------------
+    # Read values from the GUI widgets and generate/write a new XML
+    def fill_xml_interactions(self,pheno,cdef):
+        if self.debug_print_fill_xml:
+            print("------------------- fill_xml_interactions():  cdef= ",cdef)
+
+        interactions = ET.SubElement(pheno, "cell_interactions")
+        interactions.text = self.indent12  # affects indent of child
+        interactions.tail = "\n" + self.indent10
+
+            #   <dead_phagocytosis_rate units="1/min">91.0</dead_phagocytosis_rate>
+            #   <live_phagocytosis_rates>
+            #     <phagocytosis_rate name="bacteria" units="1/min">91.1</phagocytosis_rate>
+        subelm = ET.SubElement(interactions, "dead_phagocytosis_rate",{"units":"1/min"})
+        subelm.text = self.param_d[cdef]["dead_phagocytosis_rate"]
+        subelm.tail = self.indent12
+
+        #-----
+        lpr = ET.SubElement(interactions, "live_phagocytosis_rates")
+        lpr.text = self.indent16
+        lpr.tail = "\n" + self.indent12
+
+        print("--- live_phagocytosis_rate= ",self.param_d[cdef]['live_phagocytosis_rate'])
+        for key in self.param_d[cdef]['live_phagocytosis_rate'].keys():
+            print("  key in live_phagocytosis_rate= ",key)
+            if len(key) == 0:
+                continue
+            val = self.param_d[cdef]['live_phagocytosis_rate'][key]
+            print(key," --> ",val)
+            elm = ET.SubElement(lpr, 'phagocytosis_rate', {"name":key, "units":"1/min"})
+            elm.text = val
+            elm.tail = self.indent16
+            
+        # elm.tail = "\n" + self.indent10
+
+        #-----
+        arates = ET.SubElement(interactions, "attack_rates")
+        arates.text = self.indent18
+        arates.tail = "\n" + self.indent12
+
+        print("--- attack_rate= ",self.param_d[cdef]['attack_rate'])
+        for key in self.param_d[cdef]['attack_rate'].keys():
+            # argh, not sure why this is necessary, but without it, we can get empty entries if we read in a saved mymodel.xml
+            if len(key) == 0:  
+                continue
+            val = self.param_d[cdef]['attack_rate'][key]
+            print(key," --> ",val)
+            elm = ET.SubElement(arates, 'attack_rate', {"name":key, "units":"1/min"})
+            elm.text = val
+            elm.tail = self.indent18
+
+        #-----
+        subelm = ET.SubElement(interactions, "damage_rate",{"units":"1/min"})
+        subelm.text = self.param_d[cdef]["damage_rate"]
+        subelm.tail = self.indent12
+
+        #-----
+        frates = ET.SubElement(interactions, "fusion_rates")
+        frates.text = self.indent18
+        frates.tail = "\n" + self.indent10
+
+        print("--- fusion_rate= ",self.param_d[cdef]['fusion_rate'])
+        for key in self.param_d[cdef]['fusion_rate'].keys():
+            # argh, not sure why this is necessary, but without it, we can get empty entries if we read in a saved mymodel.xml
+            if len(key) == 0:
+                continue
+            val = self.param_d[cdef]['fusion_rate'][key]
+            print(key," --> ",val)
+            elm = ET.SubElement(frates, 'fusion_rate', {"name":key, "units":"1/min"})
+            elm.text = val
+            elm.tail = self.indent18
+
+        #---------------------------
+        xforms = ET.SubElement(pheno, "cell_transformations")
+        xforms.text = self.indent12  # affects indent of child
+        xforms.tail = "\n" + self.indent10
+
+        trates = ET.SubElement(xforms, "transformation_rates")
+        trates.text = self.indent16
+        trates.tail = self.indent12
+
+        for key in self.param_d[cdef]['transformation_rate'].keys():
+            # argh, not sure why this is necessary, but without it, we can get empty entries if we read in a saved mymodel.xml
+            if len(key) == 0:
+                continue
+            val = self.param_d[cdef]['transformation_rate'][key]
+            print(key," --> ",val)
+            elm = ET.SubElement(trates, 'transformation_rate', {"name":key, "units":"1/min"})
+            elm.text = val
+            elm.tail = self.indent16
+
+    #-------------------------------------------------------------------
+    # Get values from the dict and generate/write a new XML
+    def fill_xml_intracellular(self, pheno, cdef):
+        if self.debug_print_fill_xml:
+            print("------------------- fill_xml_intracellular()")
+            print("------ ['intracellular']: for ",cdef)
+            print(self.param_d[cdef]['intracellular'])
+
+            if self.param_d[cdef]['intracellular'] is not None:
+
+                if self.param_d[cdef]['intracellular']['type'] == "maboss":
+                            
+                    # Checking if you should prevent saving because of missing input
+                    if 'bnd_filename' not in self.param_d[cdef]['intracellular'] or self.param_d[cdef]['intracellular']['bnd_filename'] in [None, ""]:
+                        raise Exception("Missing BND file in the " + cdef + " cell definition ")
+
+                    if 'cfg_filename' not in self.param_d[cdef]['intracellular'] or self.param_d[cdef]['intracellular']['cfg_filename'] in [None, ""]:
+                        raise Exception("Missing CFG file in the " + cdef + " cell definition ")
+
+                    intracellular = ET.SubElement(pheno, "intracellular", {"type": "maboss"})
+                    intracellular.text = self.indent12  # affects indent of child
+                    intracellular.tail = "\n" + self.indent10
+
+                    bnd_filename = ET.SubElement(intracellular, "bnd_filename")
+                    bnd_filename.text = "./" + os.path.relpath(self.param_d[cdef]['intracellular']['bnd_filename'], os.path.dirname(self.config_path))
+                    bnd_filename.tail = self.indent12
+
+                    cfg_filename = ET.SubElement(intracellular, "cfg_filename")
+                    cfg_filename.text = "./" + os.path.relpath(self.param_d[cdef]['intracellular']['cfg_filename'], os.path.dirname(self.config_path))
+                    cfg_filename.tail = self.indent12
+                    
+                    if len(self.param_d[cdef]['intracellular']['initial_values']) > 0:
+                        initial_values = ET.SubElement(intracellular, "initial_values")
+                        initial_values.text = self.indent14
+                        initial_values.tail = "\n" + self.indent14
+                        
+                        for node, value in self.param_d[cdef]['intracellular']['initial_values']:
+                            if node != "" and value != "":
+                                initial_value = ET.SubElement(initial_values, "initial_value", {"node": node})
+                                initial_value.text = value
+                                initial_value.tail = self.indent14
+                    
+                    if len(self.param_d[cdef]['intracellular']['mutants']) > 0:
+                        mutants = ET.SubElement(intracellular, "mutants")
+                        mutants.text = self.indent14
+                        mutants.tail = "\n" + self.indent14
+                        
+                        for node, value in self.param_d[cdef]['intracellular']['mutants']:
+                            if node != "" and value != "":
+                                mutant = ET.SubElement(mutants, "mutant", {"node": node})
+                                mutant.text = value
+                                mutant.tail = self.indent14
+
+                    if len(self.param_d[cdef]['intracellular']['mutants']) > 0:
+                        parameters = ET.SubElement(intracellular, "parameters")
+                        parameters.text = self.indent14
+                        parameters.tail = "\n" + self.indent14
+                        
+                        for name, value in self.param_d[cdef]['intracellular']['parameters']:
+                            if name != "" and value != "":
+                                parameter = ET.SubElement(parameters, "parameter", {"name": name})
+                                parameter.text = value
+                                parameter.tail = self.indent14
+
+                    time_step = ET.SubElement(intracellular, "time_step")
+                    time_step.text = self.param_d[cdef]['intracellular']['time_step']
+                    time_step.tail = self.indent12
+                    
+                    time_stochasticity = ET.SubElement(intracellular, "time_stochasticity")
+                    time_stochasticity.text = self.param_d[cdef]['intracellular']['time_stochasticity']
+                    time_stochasticity.tail = self.indent12
+                    
+                    scaling = ET.SubElement(intracellular, "scaling")
+                    scaling.text = self.param_d[cdef]['intracellular']['scaling']
+                    scaling.tail = self.indent10
+                    
+
+
+        if self.debug_print_fill_xml:
+            print('\n')
+    #-------------------------------------------------------------------
     # Get values from the dict and generate/write a new XML
     def fill_xml_custom_data(self, custom_data, cdef):
         if self.debug_print_fill_xml:
@@ -5642,62 +6284,15 @@ class CellDef(QWidget):
 
     #-------------------------------------------------------------------
     # Read values from the GUI widgets and generate/write a new XML
-    def OLD_fill_xml_custom_data(self, custom_data, cdef):
-        if self.debug_print_fill_xml:
-            print("------------------- fill_xml_custom_data():  self.custom_data_count = ", self.custom_data_count)
-            print("------------------- fill_xml_custom_data():  cdef= ", cdef)
-            print("------------------- fill_xml_custom_data():  original dict:")
-            print(self.param_d[cdef]['custom_data'])
-				# <receptor units="dimensionless">1.0</receptor>
-				# <cargo_release_o2_threshold units="mmHg">10</cargo_release_o2_threshold>
-
-                # --------- update_custom_data_params():  self.param_d[cdname]['custom_data'] =  {'receptor': '1.0', 'cargo_release_o2_threshold': '10', 'damage_rate': '0.03333', 'repair_rate': '0.004167', 'drug_death_rate': '0.004167', 'damage': '0.0'}
-
-            print("values from GUI tab:")
-        # for idx in range(self.custom_data_count):
-        for idx in range(len(self.param_d[cdef]['custom_data'])):
-            name = self.custom_data_name[idx].text()
-            value = self.custom_data_value[idx].text()
-            self.param_d[cdef]['custom_data'][name] = value
-
-            units = self.custom_data_units[idx].text()
-            desc = self.custom_data_description[idx].text()
-            if self.debug_print_fill_xml:
-                print(idx,name,value,units,desc)
-
-            elm = ET.SubElement(custom_data, name,
-                    { "units":units,
-                      "description":desc } )
-
-            elm.text = self.param_d[cdef]['custom_data'][name]  # value for this var for this cell def
-            elm.tail = self.indent10
-
-        elm.tail = self.indent8   # back up 2 for the very last one
-
-        # for key in self.param_d[cdef]['custom_data'].keys():  # get name of custom data var
-        #     print("    key=",key,",  len(key)=",len(key))
-        #     # vname = self.custom_data_name[idx].text()
-        #     # if vname:
-        #     if len(key) > 0:
-        #         idx = self.master_custom_varname.index(key)
-        #         print('idx=',idx)
-        #         units = self.custom_data_units[idx].text()
-        #         desc = self.custom_data_description[idx].text()
-        #         elm = ET.SubElement(custom_data, key,
-        #             { "units":units,
-        #               "description":desc } )
-
-        #         elm.text = self.param_d[cdef]['custom_data'][key]
-        #         elm.tail = self.indent10
-        if self.debug_print_fill_xml:
-            print('\n')
-
-    #-------------------------------------------------------------------
-    # Read values from the GUI widgets and generate/write a new XML
     def fill_xml(self):
         # pass
         print("\n\n----------- cell_def_tab.py: fill_xml(): ----------")
-        print("self.param_d.keys() = ",self.param_d.keys())
+        # print("self.param_d.keys() = ",self.param_d.keys())
+        # print()
+        # print("self.param_d['default'] = ",self.param_d['default'])
+        # print()
+        # print("self.param_d['cell_def02'] = ",self.param_d['cell_def02'])
+        print()
         # print("self.param_d['endothelial'] = ",self.param_d['endothelial'])
         # print("\nself.param_d['endothelial']['cell_ID'] = ",self.param_d['endothelial']['cell_ID'])
         # print("\nself.param_d['mesangial_matrix']['cell_ID'] = ",self.param_d['mesangial_matrix']['cell_ID'])
@@ -5740,8 +6335,8 @@ class CellDef(QWidget):
 					# </phase_durations>
                 # print("cell_def_tab.py: fill_xml(): --> ",var.attrib['ID'])
                 elm = ET.Element("cell_definition", 
-                        {"name":cdef, "ID":self.param_d[cdef]["ID"]})  # rwh: retain original IDs!
-                        # {"name":cdef, "ID":str(idx)})  # rwh: NO! we need to retain the original IDs!
+                        {"name":cdef, "ID":str(idx)})  # rwh: renumbering IDs; do we need to retain the original IDs?
+                        # {"name":cdef, "ID":self.param_d[cdef]["ID"]})  # rwh: if retaining original IDs.
                 elm.tail = '\n' + self.indent6
                 elm.text = self.indent8
                 pheno = ET.SubElement(elm, 'phenotype')
@@ -5763,17 +6358,13 @@ class CellDef(QWidget):
 
                 # cycle.text = self.param_d[cdef]["diffusion_coef"]
 
-                # ------- death ------- 
                 self.fill_xml_death(pheno,cdef)
-                # ------- volume ------- 
                 self.fill_xml_volume(pheno,cdef)
-                # ------- mechanics ------- 
                 self.fill_xml_mechanics(pheno,cdef)
-                # ------- motility ------- 
                 self.fill_xml_motility(pheno,cdef)
-                # ------- secretion ------- 
                 self.fill_xml_secretion(pheno,cdef)
-
+                self.fill_xml_interactions(pheno,cdef)
+                self.fill_xml_intracellular(pheno,cdef)
 
                 # ------- custom data ------- 
                 customdata = ET.SubElement(elm, 'custom_data')
