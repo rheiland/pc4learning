@@ -68,53 +68,109 @@
 #include <vector>
 #include <string>
 
-#ifndef __PhysiCell_basic_signaling__
-#define __PhysiCell_basic_signaling__
+#ifndef __PhysiCell_signal_response__
+#define __PhysiCell_signal_response__
 
 #include "./PhysiCell_constants.h" 
 #include "./PhysiCell_phenotype.h" 
 #include "./PhysiCell_cell.h" 
 
 namespace PhysiCell{
-	
-// std::vector<std::string> 
 
-double Hill_response_function( double s, double half_max , double hill_power ); // done
-// increases from 0 (at s_min) to 1 (at s_max)
-double linear_response_function( double s, double s_min , double s_max ); // done 
-// decreases from 1 (at s_min) to 0 (at s_max)
-double decreasing_linear_response_function( double s, double s_min , double s_max ); // done 
+// scales for the signals 
+extern std::vector<double> signal_scales; 
+// easy access to get or set scales 
+double& signal_scale( std::string signal_name ); // done 
+double& signal_scale( int signal_index ); // done 
 
-// signal increases/decreases parameter
-// options: hill power
-// options: half max
+// create the signal and behavior dictionaries 
+void setup_signal_behavior_dictionaries( void ); // done 
 
-class Integrated_Signal
-{
- private:
- public: 
-	double base_activity; 
-	double max_activity; 
-	
-	std::vector<double> promoters; 
-	std::vector<double> promoter_weights; 
-	double promoters_Hill;
-	double promoters_half_max; 
-	
-	std::vector<double> inhibitors; 
-	std::vector<double> inhibitor_weights; 
-	double inhibitors_Hill;
-	double inhibitors_half_max; 
-	
-	Integrated_Signal();
-	void reset( void ); 
-	
-	void add_signal( char signal_type , double signal , double weight ); 
-	void add_signal( char signal_type , double signal );
+// display dictionaries 
+void display_signal_dictionary( void ); // done 
+void display_behavior_dictionary( void ); // done 
 
-	double compute_signal( void );
-};
+void display_signal_dictionary( std::ostream& os ); // done 
+void display_behavior_dictionary( std::ostream& os ); // done 
 
+void display_signal_dictionary_with_synonyms( void ); // done 
+void display_behavior_dictionary_with_synonyms( void ); // done 
+
+/* signal functions */ 
+
+// find index for named signal (returns -1 if not found)
+int find_signal_index( std::string signal_name ); // done 
+
+// coming soon: 
+std::vector<int> find_signal_indices( std::vector<std::string> signal_names ); // done 
+
+// get the name of a signal index 
+std::string signal_name( int i ); // done 
+
+// create a full signal vector 
+std::vector<double> get_signals( Cell* pCell ); // done 
+
+// create a signal vector of only the cell contacts 
+std::vector<double> get_cell_contact_signals( Cell* pCell ); // done 
+
+// create a subset of the signal vector with the supplied indicies 
+std::vector<double> get_selected_signals( Cell* pCell , std::vector<int> indices ); // done 
+std::vector<double> get_selected_signals( Cell* pCell , std::vector<std::string> names );  // done 
+
+// grab a single signal by its index or name 
+double get_single_signal( Cell* pCell, int index ); // done 
+double get_single_signal( Cell* pCell, std::string name ); // done 
+
+/* behavior functions */ 
+
+// find index for named behavior / response / parameter (returns -1 if not found)
+int find_parameter_index( std::string response_name ); // done
+int find_behavior_index( std::string response_name ); // done 
+
+std::vector<int> find_behavior_indices( std::vector<std::string> behavior_names ); // done 
+
+// get the name of a behavior index 
+std::string behavior_name( int i ); // done 
+
+// make a properly sized behavior vector 
+std::vector<double> create_empty_behavior_vector(); // done 
+
+// write a full behavior vector (phenotype parameters) to the cell 
+void set_behaviors( Cell* pCell , std::vector<double> parameters ); // done 
+
+// write a selected set of behavior parameters to the cell 
+void set_selected_behaviors( Cell* pCell , std::vector<int> indices , std::vector<double> parameters ); // done 
+void set_selected_behaviors( Cell* pCell , std::vector<std::string> names , std::vector<double> parameters ); // done 
+
+// write a single behavior parameter 
+void set_single_behavior( Cell* pCell, int index , double parameter ); // done  
+void set_single_behavior( Cell* pCell, std::string name , double parameter ); // done 
+
+/* get current behaviors */ 
+
+// get all current behavior
+std::vector<double> get_behaviors( Cell* pCell ); // done 
+
+// get selected current behavior
+std::vector<double> get_behaviors( Cell* pCell , std::vector<int> indices ); // doen 
+std::vector<double> get_behaviors( Cell* pCell , std::vector<std::string> names ); // done 
+
+// get single current behavior 
+double get_single_behavior( Cell* pCell , int index ); // done 
+double get_single_behavior( Cell* pCell , std::string name ); // done 
+
+/* get base behaviors (from cell definition) */ 
+
+// get all base behaviors (from cell's definition) 
+std::vector<double> get_base_behaviors( Cell* pCell );  // done 
+
+// get selected base behaviors (from cell's definition)
+std::vector<double> get_base_behaviors( Cell* pCell , std::vector<int> indices ); // done 
+std::vector<double> get_base_behaviors( Cell* pCell , std::vector<std::string> names ); // done 
+
+// get single base behavior (from cell's definition)
+double get_single_base_behavior( Cell* pCell , int index ); // done 
+double get_single_base_behavior( Cell* pCell , std::string name ); // done 
 
 }; 
 
