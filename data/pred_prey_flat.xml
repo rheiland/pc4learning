@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <PhysiCell_settings version="devel-version">
 	<domain>
 		<x_min>-500</x_min>
@@ -47,7 +46,7 @@
 	
 	<options>
 		<legacy_random_points_on_sphere_in_divide>false</legacy_random_points_on_sphere_in_divide>
-		<virtual_wall_at_domain_edge>true</virtual_wall_at_domain_edge>
+        <virtual_wall_at_domain_edge>false</virtual_wall_at_domain_edge>
 	</options>	
 
 	<microenvironment_setup>
@@ -58,17 +57,17 @@
 			</physical_parameter_set>
 			<initial_condition units="dimensionless">1</initial_condition>
 			<Dirichlet_boundary_condition units="dimensionless" enabled="false">0</Dirichlet_boundary_condition>
- 
+<!--
 			<Dirichlet_options>
 				<boundary_value ID="xmin" enabled="false">0</boundary_value>
 				<boundary_value ID="xmax" enabled="false">0</boundary_value>
 				<boundary_value ID="ymin" enabled="false">0</boundary_value>
 				<boundary_value ID="ymax" enabled="false">0</boundary_value>
-				<boundary_value ID="zmin" enabled="false">0</boundary_value>
+				<boundary_value ID="zmin" enabled="false">1</boundary_value>
 				<boundary_value ID="zmax" enabled="false">0</boundary_value>
 			</Dirichlet_options>
+-->			
  		</variable>
-		
 		<variable name="prey signal" units="dimensionless" ID="1">
 			<physical_parameter_set>
 				<diffusion_coefficient units="micron^2/min">1000.0</diffusion_coefficient>
@@ -76,17 +75,7 @@
 			</physical_parameter_set>
 			<initial_condition units="dimensionless">0</initial_condition>
 			<Dirichlet_boundary_condition units="dimensionless" enabled="true">0</Dirichlet_boundary_condition>
- 
-			<Dirichlet_options>
-				<boundary_value ID="xmin" enabled="true">0</boundary_value>
-				<boundary_value ID="xmax" enabled="true">0</boundary_value>
-				<boundary_value ID="ymin" enabled="true">0</boundary_value>
-				<boundary_value ID="ymax" enabled="true">0</boundary_value>
-				<boundary_value ID="zmin" enabled="true">0</boundary_value>
-				<boundary_value ID="zmax" enabled="true">0</boundary_value>
-			</Dirichlet_options>
  		</variable>		
-
 		<variable name="predator signal" units="dimensionless" ID="2">
 			<physical_parameter_set>
 				<diffusion_coefficient units="micron^2/min">1000.0</diffusion_coefficient>
@@ -94,18 +83,7 @@
 			</physical_parameter_set>
 			<initial_condition units="dimensionless">0</initial_condition>
 			<Dirichlet_boundary_condition units="dimensionless" enabled="true">0</Dirichlet_boundary_condition>
- 
-			<Dirichlet_options>
-				<boundary_value ID="xmin" enabled="true">0</boundary_value>
-				<boundary_value ID="xmax" enabled="true">0</boundary_value>
-				<boundary_value ID="ymin" enabled="true">0</boundary_value>
-				<boundary_value ID="ymax" enabled="true">0</boundary_value>
-				<boundary_value ID="zmin" enabled="true">0</boundary_value>
-				<boundary_value ID="zmax" enabled="true">0</boundary_value>
-			</Dirichlet_options>
  		</variable>		
-
-		
 		<options>
 			<calculate_gradients>true</calculate_gradients>
 			<track_internalized_substrates_in_each_agent>true</track_internalized_substrates_in_each_agent>
@@ -128,7 +106,6 @@
 						<rate start_index="0" end_index="0" fixed_duration="false">0.0</rate>
 					</phase_transition_rates>
 				</cycle>
-				
 				<death>  
 					<model code="100" name="apoptosis"> 
 						<death_rate units="1/min">0</death_rate>
@@ -151,7 +128,6 @@
 							<duration index="0" fixed_duration="true">0</duration>
 							<duration index="1" fixed_duration="true">86400</duration>
 						</phase_durations>
-						
 						<parameters>
 							<unlysed_fluid_change_rate units="1/min">0.05</unlysed_fluid_change_rate>
 							<lysed_fluid_change_rate units="1/min">0</lysed_fluid_change_rate>
@@ -167,17 +143,13 @@
 					<total units="micron^3">2494</total>
 					<fluid_fraction units="dimensionless">0.75</fluid_fraction>
 					<nuclear units="micron^3">540</nuclear>
-					
 					<fluid_change_rate units="1/min">0.05</fluid_change_rate>
 					<cytoplasmic_biomass_change_rate units="1/min">0.0045</cytoplasmic_biomass_change_rate>
 					<nuclear_biomass_change_rate units="1/min">0.0055</nuclear_biomass_change_rate>
-					
 					<calcified_fraction units="dimensionless">0</calcified_fraction>
 					<calcification_rate units="1/min">0</calcification_rate>
-					
 					<relative_rupture_volume units="dimensionless">2.0</relative_rupture_volume>
 				</volume> 				
-				
 				<mechanics> 
 					<cell_cell_adhesion_strength units="micron/min">0</cell_cell_adhesion_strength>
 					<cell_cell_repulsion_strength units="micron/min">10.0</cell_cell_repulsion_strength>
@@ -241,14 +213,13 @@
 			</custom_data>
 		</cell_definition>
 		
-		<cell_definition name="prey" ID="1">
+		<cell_definition name="prey" ID="1" visible="true">
 			<phenotype>
 				<cycle code="5" name="live">  
 					<phase_transition_rates units="1/min"> 
 						<rate start_index="0" end_index="0" fixed_duration="false">0.003</rate>
 					</phase_transition_rates>
 				</cycle>
-				
 				<death>  
 					<model code="100" name="apoptosis"> 
 						<death_rate units="1/min">0</death_rate>
@@ -271,7 +242,6 @@
 							<duration index="0" fixed_duration="true">0</duration>
 							<duration index="1" fixed_duration="true">86400</duration>
 						</phase_durations>
-						
 						<parameters>
 							<unlysed_fluid_change_rate units="1/min">0.05</unlysed_fluid_change_rate>
 							<lysed_fluid_change_rate units="1/min">0</lysed_fluid_change_rate>
@@ -361,14 +331,13 @@
 			</custom_data>
 		</cell_definition>
 		
-		<cell_definition name="predator" ID="2">
+		<cell_definition name="predator" ID="2" visible="true">
 			<phenotype>
 				<cycle code="5" name="live">  
 					<phase_transition_rates units="1/min"> 
 						<rate start_index="0" end_index="0" fixed_duration="false">0.0</rate>
 					</phase_transition_rates>
 				</cycle>
-				
 				<death>  
 					<model code="100" name="apoptosis"> 
 						<death_rate units="1/min">0</death_rate>
@@ -439,7 +408,7 @@
 						<use_2D>true</use_2D>
 						<chemotaxis>
 							<enabled>false</enabled>
-							<substrate>prey signal</substrate>
+							<substrate>food</substrate>
 							<direction>-1</direction>
 						</chemotaxis>
 					</options>
@@ -485,10 +454,9 @@
 
 	<initial_conditions>
 		<cell_positions type="csv" enabled="false">
-			<folder>./data</folder>
+			<folder>./config</folder>
 			<filename>cells.csv</filename>
 		</cell_positions>
-
 	</initial_conditions> 
 	
 	<user_parameters>
