@@ -7,6 +7,7 @@ Dr. Paul Macklin (macklinp@iu.edu)
 
 import os
 import sys
+import shutil
 import copy
 import xml.etree.ElementTree as ET  # https://docs.python.org/2/library/xml.etree.elementtree.html
 from PyQt5 import QtCore, QtGui
@@ -157,13 +158,13 @@ class CellDef(QWidget):
         self.controls_hbox.addWidget(self.delete_button)
 
         #------------------
-        self.cycle_tab = QWidget()
-        self.death_tab = QWidget()
-        self.volume_tab = QWidget()
-        self.mechanics_tab = QWidget()
-        self.motility_tab = QWidget()
-        self.secretion_tab = QWidget()
-        self.interaction_tab = QWidget()
+        # self.cycle_tab = QWidget()
+        # self.death_tab = QWidget()
+        # self.volume_tab = QWidget()
+        # self.mechanics_tab = QWidget()
+        # self.motility_tab = QWidget()
+        # self.secretion_tab = QWidget()
+        # self.interaction_tab = QWidget()
 
         self.custom_data_tab = QWidget()
         self.custom_data_name = []
@@ -171,10 +172,12 @@ class CellDef(QWidget):
         self.custom_data_units = []
         self.custom_data_description = []
 
-        self.scroll_params = QScrollArea()
+        # self.scroll_params = QScrollArea()
 
         self.tab_widget = QTabWidget()
-        self.splitter.addWidget(self.scroll_params)
+        # self.tab_params_widget = QTabWidget()
+        # self.splitter.addWidget(self.scroll_params)
+        self.splitter.addWidget(self.tab_widget)
 
         # self.tab_widget.setStyleSheet('''
         # QTabWidget {
@@ -198,6 +201,7 @@ class CellDef(QWidget):
 
         self.cell_types_tabs_layout = QGridLayout()
         self.cell_types_tabs_layout.addWidget(self.tab_widget, 0,0,1,1) # w, row, column, rowspan, colspan
+        # self.cell_types_tabs_layout.addWidget(self.tab_params_widget, 1,0,1,1) # w, row, column, rowspan, colspan
 
     #----------------------------------------------------------------------
     # @QtCore.Slot()
@@ -1273,6 +1277,8 @@ class CellDef(QWidget):
     #--------------------------------------------------------
     def create_death_tab(self):
         death_tab = QWidget()
+        # self.scroll_params = QScrollArea()
+        death_tab_scroll = QScrollArea()
         glayout = QGridLayout()
 
         #----------------
@@ -1732,15 +1738,25 @@ class CellDef(QWidget):
         glayout.addWidget(units, idr,2, 1,1) # w, row, column, rowspan, colspan
 
         #------
-        for idx in range(11):  # rwh: hack solution to align rows
-            blank_line = QLabel("")
-            idr += 1
-            glayout.addWidget(blank_line, idr,0, 1,1) # w, row, column, rowspan, colspan
+#rwh
+        # for idx in range(11):  # rwh: hack solution to align rows
+        # for idx in range(0):  # rwh: hack solution to align rows
+        #     blank_line = QLabel("")
+        #     idr += 1
+        #     glayout.addWidget(blank_line, idr,0, 1,1) # w, row, column, rowspan, colspan
         #------
 
-        # glayout.setVerticalSpacing(10)  # rwh - argh
+        death_tab_scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        death_tab_scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        death_tab_scroll.setWidgetResizable(True)
+        death_tab_scroll.setWidget(death_tab) 
+
         death_tab.setLayout(glayout)
-        return death_tab
+        # death_tab.addWidget(death_tab_scroll)
+        # scroll_params.setLayout(glayout)
+        # death_tab.setLayout(scroll_params)
+        # return death_tab
+        return death_tab_scroll
 
     #--------------------------------------------------------
     def apoptosis_phase_transition_cb(self):
@@ -2356,7 +2372,7 @@ class CellDef(QWidget):
         glayout.addWidget(self.chemo_sensitivity, idr,2, 1,1) # w, row, column, rowspan, colspan
 
         #------
-        for idx in range(11):  # rwh: hack solution to align rows
+        for idx in range(8):  # rwh: hack solution to align rows
             blank_line = QLabel("")
             idr += 1
             glayout.addWidget(blank_line, idr,0, 1,1) # w, row, column, rowspan, colspan
@@ -2952,7 +2968,7 @@ class CellDef(QWidget):
                 self.physiboss_time_step.setText("12.0")
 
             if self.physiboss_time_stochasticity.text() == "":
-                self.physiboss_time_stochasticity.setText("1.0")
+                self.physiboss_time_stochasticity.setText("0.0")
 
             if self.physiboss_scaling.text() == "":
                 self.physiboss_scaling.setText("1.0")
@@ -2968,6 +2984,7 @@ class CellDef(QWidget):
     #--------------------------------------------------------
     def create_intracellular_tab(self):
         intracellular_tab = QWidget()
+        intracellular_tab_scroll = QScrollArea()
         glayout = QVBoxLayout()
 
         label = QLabel("Phenotype: intracellular")
@@ -2986,7 +3003,7 @@ class CellDef(QWidget):
         self.intracellular_type_dropdown.addItem("boolean")
         self.intracellular_type_dropdown.addItem("odes")
         self.intracellular_type_dropdown.addItem("fba")
-        self.intracellular_type_dropdown.setEnabled(False)
+        self.intracellular_type_dropdown.setEnabled(False)  # rwh: temporary, for this app
         type_hbox.addWidget(self.intracellular_type_dropdown)
 
         # glayout.addLayout(type_hbox, idr,0, 1,1) # w, row, column, rowspan, colspan
@@ -3131,8 +3148,16 @@ class CellDef(QWidget):
         glayout.addWidget(self.physiboss_boolean_frame)
         glayout.addStretch()
 
+
+        intracellular_tab_scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        intracellular_tab_scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        intracellular_tab_scroll.setWidgetResizable(True)
+        intracellular_tab_scroll.setWidget(intracellular_tab) 
+
         intracellular_tab.setLayout(glayout)
-        return intracellular_tab
+
+        intracellular_tab.setLayout(glayout)
+        return intracellular_tab_scroll
 
     #--------------------------------------------------------
     # The following (text-based widgets) were (originally) auto-generated by 
@@ -3482,45 +3507,9 @@ class CellDef(QWidget):
     #--------------------------------------------------------
     def create_custom_data_tab(self):
         custom_data_tab = QWidget()
+        custom_data_tab_scroll = QScrollArea()
         glayout = QGridLayout()
 
-        #=====  Custom data 
-        # label = QLabel("Custom data")
-        # label.setStyleSheet("background-color: cyan")
-
-        #-------------------------
-        # self.custom_data_controls_hbox = QHBoxLayout()
-        # # self.new_button = QPushButton("New")
-        # self.new_button = QPushButton("Append 5 more rows")
-        # self.custom_data_controls_hbox.addWidget(self.new_button)
-        # self.new_button.clicked.connect(self.append_more_cb)
-
-        # self.clear_button = QPushButton("Clear selected rows")
-        # self.custom_data_controls_hbox.addWidget(self.clear_button)
-        # self.clear_button.clicked.connect(self.clear_rows_cb)
-
-        #-------------------------
-        # Fixed names for columns:
-        # hbox = QHBoxLayout()
-
-        # col1 = QLabel("Name")
-        # col1.setAlignment(QtCore.Qt.AlignCenter)
-        # hbox.addWidget(col1)
-
-        # # col2 = QLabel("Type")
-        # # col2.setAlignment(QtCore.Qt.AlignCenter)
-        # # hbox.addWidget(col2)
-
-        # col3 = QLabel("Default Value (floating point)")
-        # col3.setAlignment(QtCore.Qt.AlignCenter)
-        # hbox.addWidget(col3)
-
-        # col4 = QLabel("Units")
-        # col4.setFixedWidth(self.units_width)
-        # col4.setAlignment(QtCore.Qt.AlignCenter)
-        # hbox.addWidget(col4)
-        # # label.setFixedWidth(180)
-        # self.main_layout.addLayout(hbox)
 
         #-------------------------
         # Fixed names for columns:
@@ -3645,71 +3634,27 @@ class CellDef(QWidget):
                 w_units.setStyleSheet("background-color: LightGreen")  
                 w_desc.setStyleSheet("background-color: LightGreen")  
 
-#            self.vbox.addLayout(hbox)
-
-            # self.vbox.addLayout(hbox)
-            # self.vbox.addLayout(hbox)
             self.custom_data_count = self.custom_data_count + 1
 
-
-        #==================================================================
-        # compare with config_tab.py
-        # self.config_params.setLayout(self.vbox)
-
-        # self.scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
-        # self.scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
-        # self.scroll.setWidgetResizable(True)
-
-        # self.scroll.setWidget(self.config_params) # self.config_params = QWidget()
-
-        # self.layout = QVBoxLayout(self)
-
-        # self.layout.addWidget(self.scroll)
-
-        #===============
-        # self.params_cell_def.setLayout(self.vbox)
-
-        self.scroll_params.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
-        self.scroll_params.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
-        self.scroll_params.setWidgetResizable(True)
-
-        # self.scroll_params.setWidget(self.params_cell_def)
-        self.scroll_params.setWidget(self.tab_widget) # self.tab_widget = QTabWidget()
-
-
-        # self.save_button = QPushButton("Save")
-        # self.text = QLabel("Hello World",alignment=QtCore.Qt.AlignCenter)
-
         self.layout = QVBoxLayout(self)
-        # self.layout.addStretch(1)
-
-        # self.layout.addWidget(self.tabs)
-        # self.layout.addWidget(self.params)
-
         self.layout.addLayout(self.controls_hbox)
-        # self.layout.addLayout(self.name_hbox)
-        # self.layout.addLayout(self.cell_types_tabs_layout)
-        # self.layout.addWidget(self.tab_widget)
-
-        # self.layout.addWidget(self.scroll)
         self.layout.addWidget(self.splitter)
 
-        # self.layout.addWidget(self.vbox)
-        # self.layout.addWidget(self.text)
+        # for idx in range(5):  # rwh: hack solution to align rows
+        #     blank_line = QLabel("")
+        #     idr += 1
+        #     glayout.addWidget(blank_line, idr,0, 1,1) # w, row, column, rowspan, colspan
 
-        # self.layout.addWidget(self.save_button)
-        # self.save_button.clicked.connect(self.save_xml)
+        custom_data_tab_scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        custom_data_tab_scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        custom_data_tab_scroll.setWidgetResizable(True)
+        custom_data_tab_scroll.setWidget(custom_data_tab) 
 
-        #------
-        for idx in range(5):  # rwh: hack solution to align rows
-            blank_line = QLabel("")
-            idr += 1
-            glayout.addWidget(blank_line, idr,0, 1,1) # w, row, column, rowspan, colspan
-
-        #------
-        # vlayout.setVerticalSpacing(10)  # rwh - argh
         custom_data_tab.setLayout(glayout)
-        return custom_data_tab
+
+        custom_data_tab.setLayout(glayout)
+        return custom_data_tab_scroll
+
 
 
     def custom_data_name_changed(self, text):
@@ -5107,11 +5052,13 @@ class CellDef(QWidget):
     #-----------------------------------------------------------------------------------------
     def update_intracellular_params(self):
         cdname = self.current_cell_def
-        if self.param_d[cdname]["intracellular"] is not None:    
+        if self.param_d[cdname]["intracellular"] is not None:
             if self.param_d[cdname]["intracellular"]["type"] == "maboss":
                 self.intracellular_type_dropdown.setCurrentIndex(1)
-                self.physiboss_bnd_file.setText(self.param_d[cdname]["intracellular"]["bnd_filename"])
-                self.physiboss_cfg_file.setText(self.param_d[cdname]["intracellular"]["cfg_filename"])
+                if "bnd_filename" in self.param_d[cdname]["intracellular"].keys(): 
+                    self.physiboss_bnd_file.setText(self.param_d[cdname]["intracellular"]["bnd_filename"])
+                if "cfg_filename" in self.param_d[cdname]["intracellular"].keys():
+                    self.physiboss_cfg_file.setText(self.param_d[cdname]["intracellular"]["cfg_filename"])
                 self.physiboss_time_step.setText(self.param_d[cdname]["intracellular"]["time_step"])
                 self.physiboss_scaling.setText(self.param_d[cdname]["intracellular"]["scaling"])
 
@@ -5199,9 +5146,7 @@ class CellDef(QWidget):
         self.update_motility_params()
         self.update_secretion_params()
         self.update_interaction_params()
-        # if "bnd_filename" in self.param_d[self.current_cell_def]["intracellular"].keys():
-        if self.param_d[self.current_cell_def]["intracellular"] is not None:
-            self.update_intracellular_params()
+        self.update_intracellular_params()
         # self.update_molecular_params()
         self.update_custom_data_params()
 
@@ -6194,14 +6139,16 @@ class CellDef(QWidget):
                     intracellular.text = self.indent12  # affects indent of child
                     intracellular.tail = "\n" + self.indent10
 
+                    shutil.copyfile(self.param_d[cdef]['intracellular']['bnd_filename'], os.path.join(os.path.dirname(self.config_path), os.path.basename(self.param_d[cdef]['intracellular']['bnd_filename'])))
                     bnd_filename = ET.SubElement(intracellular, "bnd_filename")
-                    bnd_filename.text = "./" + os.path.relpath(self.param_d[cdef]['intracellular']['bnd_filename'], os.path.dirname(self.config_path))
+                    bnd_filename.text = os.path.basename(self.param_d[cdef]['intracellular']['bnd_filename'])
                     bnd_filename.tail = self.indent12
 
+                    shutil.copyfile(self.param_d[cdef]['intracellular']['cfg_filename'], os.path.join(os.path.dirname(self.config_path), os.path.basename(self.param_d[cdef]['intracellular']['cfg_filename'])))
                     cfg_filename = ET.SubElement(intracellular, "cfg_filename")
-                    cfg_filename.text = "./" + os.path.relpath(self.param_d[cdef]['intracellular']['cfg_filename'], os.path.dirname(self.config_path))
+                    cfg_filename.text = os.path.basename(self.param_d[cdef]['intracellular']['cfg_filename'])
                     cfg_filename.tail = self.indent12
-                    
+
                     if len(self.param_d[cdef]['intracellular']['initial_values']) > 0:
                         initial_values = ET.SubElement(intracellular, "initial_values")
                         initial_values.text = self.indent14
@@ -6214,17 +6161,17 @@ class CellDef(QWidget):
                                 initial_value.tail = self.indent14
                     
                     if len(self.param_d[cdef]['intracellular']['mutants']) > 0:
-                        mutants = ET.SubElement(intracellular, "mutants")
+                        mutants = ET.SubElement(intracellular, "mutations")
                         mutants.text = self.indent14
                         mutants.tail = "\n" + self.indent14
                         
                         for node, value in self.param_d[cdef]['intracellular']['mutants']:
                             if node != "" and value != "":
-                                mutant = ET.SubElement(mutants, "mutant", {"node": node})
+                                mutant = ET.SubElement(mutants, "mutation", {"node": node})
                                 mutant.text = value
                                 mutant.tail = self.indent14
 
-                    if len(self.param_d[cdef]['intracellular']['mutants']) > 0:
+                    if len(self.param_d[cdef]['intracellular']['parameters']) > 0:
                         parameters = ET.SubElement(intracellular, "parameters")
                         parameters.text = self.indent14
                         parameters.tail = "\n" + self.indent14
