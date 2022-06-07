@@ -33,6 +33,7 @@ from microenv_tab import SubstrateDef
 from user_params_tab import UserParams 
 from run_tab import RunModel 
 from vis_tab import Vis 
+from legend_tab import Legend 
 
 class QHLine(QFrame):
     def __init__(self, sunken_flag):
@@ -245,8 +246,9 @@ class PhysiCellXMLCreator(QWidget):
         self.tabWidget.addTab(self.user_params_tab,"User Params")
         self.tabWidget.addTab(self.run_tab,"Run")
         if show_vis_flag:
-            print("studio.py: creating vis_tab (Plot tab)")
+            print("studio.py: creating vis_tab (Plot tab) and legend_tab")
             self.vis_tab = Vis(self.nanohub_flag)
+            self.legend_tab = Legend(self.nanohub_flag)
             # self.vis_tab.setEnabled(False)
             # self.vis_tab.nanohub_flag = self.nanohub_flag
             # self.vis_tab.xml_root = self.xml_root
@@ -254,7 +256,11 @@ class PhysiCellXMLCreator(QWidget):
             # self.tabWidget.setTabEnabled(5, False)
             self.enablePlotTab(False)
 
+            self.tabWidget.addTab(self.legend_tab,"Legend")
+            self.enableLegendTab(False)
+
             self.run_tab.vis_tab = self.vis_tab
+            self.run_tab.legend_tab = self.legend_tab
             print("studio.py: calling vis_tab.substrates_cbox_changed_cb(2)")
             self.vis_tab.fill_substrates_combobox(self.celldef_tab.substrate_list)
             # self.vis_tab.substrates_cbox_changed_cb(2)   # doesn't accomplish it; need to set index, but not sure when
@@ -274,6 +280,9 @@ class PhysiCellXMLCreator(QWidget):
     def enablePlotTab(self, bval):
         # self.tabWidget.setTabEnabled(5, bval)
         self.tabWidget.setTabEnabled(6, bval)   # tab index = 6 if About tab is defined
+
+    def enableLegendTab(self, bval):
+        self.tabWidget.setTabEnabled(7, bval)   
 
     def menu(self):
         menubar = QMenuBar(self)
@@ -504,6 +513,7 @@ class PhysiCellXMLCreator(QWidget):
         self.vis_tab.reset_model()
         # self.vis_tab.setEnabled(False)
         self.enablePlotTab(False)
+        self.enableLegendTab(False)
         self.tabWidget.setCurrentIndex(0)  # Config (default)
 
 
@@ -644,7 +654,7 @@ class PhysiCellXMLCreator(QWidget):
             self.run_tab.exec_name.setText('template')
         else:
             self.run_tab.exec_name.setText('../template')
-        self.vis_tab.show_edge = False
+        self.vis_tab.show_edge = False   # no longer used?
         self.vis_tab.bgcolor = [1,1,1,1]
 
 

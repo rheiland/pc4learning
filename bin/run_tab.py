@@ -29,6 +29,7 @@ class RunModel(QWidget):
         self.nanohub_flag = nanohub_flag
         self.tab_widget = tab_widget
         self.download_menu = download_menu
+        # self.legend_tab = legend_tab
 
         #-------------------------------------------
         # used with nanoHUB app
@@ -40,6 +41,7 @@ class RunModel(QWidget):
         self.microenv_tab = None
         self.celldef_tab = None
         self.user_params_tab = None
+        self.legend_tab = None
 
         #-----
         self.vis_tab = None
@@ -204,7 +206,9 @@ class RunModel(QWidget):
             # self.tab_widget.enablePlotTab(True)
 
             # self.tab_widget.setTabEnabled(5, True)
-            self.tab_widget.setTabEnabled(6, True)   # disable Plot tab until a sim has been Run (index depends on About tab being defined or not)
+            self.tab_widget.setTabEnabled(6, True)   # enable Plot tab 
+            self.tab_widget.setTabEnabled(7, True)   # enable Legend tab 
+
             self.message("Executing process")
             self.p = QProcess()  # Keep a reference to the QProcess (e.g. on self) while it's running.
             self.p.readyReadStandardOutput.connect(self.handle_stdout)
@@ -220,6 +224,8 @@ class RunModel(QWidget):
                 print("run_tab.py: running: ",exec_str,xml_str)
                 self.p.start(exec_str, [xml_str])
             # self.p = None  # No, don't do this
+
+            self.legend_tab.reload_legend()  # new, not sure about timing - creation vs. display
         else:
             print("self.p is not None???")
 
