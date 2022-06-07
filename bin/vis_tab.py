@@ -180,25 +180,39 @@ class Vis(QWidget):
         self.first_button.setFixedWidth(arrow_button_width)
         self.first_button.clicked.connect(self.first_plot_cb)
         # controls_hbox.addWidget(self.first_button)
-        self.glayout1.addWidget(self.first_button, 0,0,1,1) # w, row, column, rowspan, colspan
+        icol = 0
+        self.glayout1.addWidget(self.first_button, 0,icol,1,1) # w, row, column, rowspan, colspan
 
         self.back_button = QPushButton("<")
         self.back_button.setFixedWidth(arrow_button_width)
         self.back_button.clicked.connect(self.back_plot_cb)
         # controls_hbox.addWidget(self.back_button)
-        self.glayout1.addWidget(self.back_button, 0,1,1,1) # w, row, column, rowspan, colspan
+        icol += 1
+        self.glayout1.addWidget(self.back_button, 0,icol,1,1) # w, row, column, rowspan, colspan
+
+        frame_count_width = 40
+        self.frame_count = QLineEdit()
+        # self.frame_count.textChanged.connect(self.change_frame_count_cb)  # do later to appease the callback gods
+        self.frame_count.setFixedWidth(frame_count_width)
+        self.frame_count.setValidator(QtGui.QIntValidator(0,10000000))
+        self.frame_count.setText('0')
+        icol += 1
+        self.glayout1.addWidget(self.frame_count, 0,icol,1,1) # w, row, column, rowspan, colspan
+
 
         self.forward_button = QPushButton(">")
         self.forward_button.setFixedWidth(arrow_button_width)
         self.forward_button.clicked.connect(self.forward_plot_cb)
         # controls_hbox.addWidget(self.forward_button)
-        self.glayout1.addWidget(self.forward_button, 0,2,1,1) # w, row, column, rowspan, colspan
+        icol += 1
+        self.glayout1.addWidget(self.forward_button, 0,icol,1,1) # w, row, column, rowspan, colspan
 
         self.last_button = QPushButton(">|")
         self.last_button.setFixedWidth(arrow_button_width)
         self.last_button.clicked.connect(self.last_plot_cb)
         # controls_hbox.addWidget(self.last_button)
-        self.glayout1.addWidget(self.last_button, 0,3,1,1) # w, row, column, rowspan, colspan
+        icol += 1
+        self.glayout1.addWidget(self.last_button, 0,icol,1,1) # w, row, column, rowspan, colspan
 
         self.play_button = QPushButton("Play")
         self.play_button.setFixedWidth(70)
@@ -206,7 +220,8 @@ class Vis(QWidget):
         # self.play_button.clicked.connect(self.play_plot_cb)
         self.play_button.clicked.connect(self.animate)
         # controls_hbox.addWidget(self.play_button)
-        self.glayout1.addWidget(self.play_button, 0,4,1,1) # w, row, column, rowspan, colspan
+        icol += 1
+        self.glayout1.addWidget(self.play_button, 0,icol,1,1) # w, row, column, rowspan, colspan
 
         # self.prepare_button = QPushButton("Prepare")
         # self.prepare_button.clicked.connect(self.prepare_plot_cb)
@@ -217,30 +232,32 @@ class Vis(QWidget):
         self.cells_checkbox.clicked.connect(self.cells_toggle_cb)
         self.cells_checked_flag = True
         # self.glayout1.addWidget(self.cells_checkbox, 0,5,1,2) # w, row, column, rowspan, colspan
-        self.glayout1.addWidget(self.cells_checkbox, 0,5,1,1) # w, row, column, rowspan, colspan
+        icol += 1
+        self.glayout1.addWidget(self.cells_checkbox, 0,icol,1,1) # w, row, column, rowspan, colspan
 
         self.cells_edge_checkbox = QCheckBox('edge')
         self.cells_edge_checkbox.setChecked(True)
         self.cells_edge_checkbox.clicked.connect(self.cells_edge_toggle_cb)
         self.cells_edge_checked_flag = True
-        self.glayout1.addWidget(self.cells_edge_checkbox, 0,6,1,1) # w, row, column, rowspan, colspan
+        icol += 1
+        self.glayout1.addWidget(self.cells_edge_checkbox, 0,icol,1,1) # w, row, column, rowspan, colspan
 
         self.substrates_checkbox = QCheckBox('Substrates')
         self.substrates_checkbox.setChecked(False)
         # self.substrates_checkbox.setEnabled(False)
         self.substrates_checkbox.clicked.connect(self.substrates_toggle_cb)
         self.substrates_checked_flag = False
-        self.glayout1.addWidget(self.substrates_checkbox, 0,7,1,2) # w, row, column, rowspan, colspan
+        icol += 1
+        self.glayout1.addWidget(self.substrates_checkbox, 0,icol,1,2) # w, row, column, rowspan, colspan
 
         self.fix_cmap_checkbox = QCheckBox('fix')
         self.fix_cmap_flag = False
         self.fix_cmap_checkbox.setEnabled(False)
         self.fix_cmap_checkbox.setChecked(self.fix_cmap_flag)
         self.fix_cmap_checkbox.clicked.connect(self.fix_cmap_toggle_cb)
-        icol = 9
+        icol += 2
         self.glayout1.addWidget(self.fix_cmap_checkbox, 0,icol,1,1) # w, row, column, rowspan, colspan
 
-        icol += 1
         cvalue_width = 70
         label = QLabel("cmin")
         # label.setFixedWidth(label_width)
@@ -253,6 +270,7 @@ class Vis(QWidget):
         self.cmin.setFixedWidth(cvalue_width)
         self.cmin.setValidator(QtGui.QDoubleValidator())
         self.cmin.setEnabled(False)
+        icol += 1
         self.glayout1.addWidget(label, 0,icol,1,1) # w, row, column, rowspan, colspan
         icol += 1
         self.glayout1.addWidget(self.cmin, 0,icol,1,1) # w, row, column, rowspan, colspan
@@ -275,6 +293,9 @@ class Vis(QWidget):
         icol += 1
         self.glayout1.addWidget(self.substrates_combobox, 0,icol,1,2) # w, row, column, rowspan, colspan
         
+        #-----------
+        self.frame_count.textChanged.connect(self.change_frame_count_cb)
+
         # self.controls1.setGeometry(QRect(20, 40, 601, 501))
         # self.controls1.resize(500,30)
         # self.stackw.addWidget(self.controls1)  # rwh: crap, just doing this causes it to disappear, even though we never add the stackw below!
@@ -466,6 +487,13 @@ class Vis(QWidget):
             #         self.layout.removeWidget(widget)
             #         widget.deleteLater()
 
+    def change_frame_count_cb(self):
+        try:  # due to the initial callback
+            self.current_svg_frame = int(self.frame_count.text())
+        except:
+            pass
+        self.update_plots()
+
     def cmin_cmax_cb(self):
         print("----- cmin_cmax_cb:")
         try:  # due to the initial callback
@@ -507,6 +535,8 @@ class Vis(QWidget):
             self.plot_substrate(self.current_svg_frame)
         if self.cells_checked_flag:
             self.plot_svg(self.current_svg_frame)
+
+        self.frame_count.setText(str(self.current_svg_frame))
 
         self.canvas.update()
         self.canvas.draw()
