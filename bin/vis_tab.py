@@ -216,7 +216,14 @@ class Vis(QWidget):
         self.cells_checkbox.setChecked(True)
         self.cells_checkbox.clicked.connect(self.cells_toggle_cb)
         self.cells_checked_flag = True
-        self.glayout1.addWidget(self.cells_checkbox, 0,5,1,2) # w, row, column, rowspan, colspan
+        # self.glayout1.addWidget(self.cells_checkbox, 0,5,1,2) # w, row, column, rowspan, colspan
+        self.glayout1.addWidget(self.cells_checkbox, 0,5,1,1) # w, row, column, rowspan, colspan
+
+        self.cells_edge_checkbox = QCheckBox('edge')
+        self.cells_edge_checkbox.setChecked(True)
+        self.cells_edge_checkbox.clicked.connect(self.cells_edge_toggle_cb)
+        self.cells_edge_checked_flag = True
+        self.glayout1.addWidget(self.cells_edge_checkbox, 0,6,1,1) # w, row, column, rowspan, colspan
 
         self.substrates_checkbox = QCheckBox('Substrates')
         self.substrates_checkbox.setChecked(False)
@@ -754,7 +761,10 @@ class Vis(QWidget):
 
     def cells_toggle_cb(self,bval):
         self.cells_checked_flag = bval
+        self.update_plots()
 
+    def cells_edge_toggle_cb(self,bval):
+        self.cells_edge_checked_flag = bval
         self.update_plots()
 
 
@@ -1291,7 +1301,8 @@ class Vis(QWidget):
         # print('max=',markers_size.max())
 
         #rwh - temp fix - Ah, error only occurs when "edges" is toggled on
-        if (self.show_edge):
+        # if (self.show_edge):
+        if (self.cells_edge_checked_flag):
             try:
                 # plt.scatter(xvals,yvals, s=markers_size, c=rgbs, edgecolor='black', linewidth=0.5)
                 # self.circles(xvals,yvals, s=rvals, color=rgbas, alpha=self.alpha, edgecolor='black', linewidth=0.5)
