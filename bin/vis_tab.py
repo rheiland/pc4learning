@@ -797,7 +797,7 @@ class Vis(QWidget):
     def animate(self):
         if not self.animating_flag:
             self.animating_flag = True
-            self.play_button.setText("Halt")
+            self.play_button.setText("Pause")
             self.play_button.setStyleSheet("background-color : red")
 
             if self.reset_model_flag:

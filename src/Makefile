@@ -1,4 +1,5 @@
 VERSION := $(shell grep . VERSION.txt | cut -f1 -d:)
+PROGRAM_NAME0:= template
 PROGRAM_NAME1:= biorobots
 PROGRAM_NAME2:= celltypes3
 PROGRAM_NAME3:= pred_prey
@@ -97,6 +98,7 @@ pugixml_OBJECTS := pugixml.o
 PhysiCell_OBJECTS := $(BioFVM_OBJECTS)  $(pugixml_OBJECTS) $(PhysiCell_core_OBJECTS) $(PhysiCell_module_OBJECTS)
 #ALL_OBJECTS1 := $(PhysiCell_OBJECTS) $(biorobots_custom_module_OBJECTS)
 #ALL_OBJECTS2 := $(PhysiCell_OBJECTS) $(celltypes3_custom_module_OBJECTS)
+ALL_OBJECTS0 := $(PhysiCell_OBJECTS) template.o
 ALL_OBJECTS1 := $(PhysiCell_OBJECTS) biorobots.o
 ALL_OBJECTS2 := $(PhysiCell_OBJECTS) celltypes3.o
 ALL_OBJECTS3 := $(PhysiCell_OBJECTS) pred_prey_farmer.o
@@ -104,7 +106,8 @@ ALL_OBJECTS4 := $(PhysiCell_OBJECTS) interactions.o
 
 # compile the project 
 
-all: main-biorobots.cpp $(ALL_OBJECTS1) $(ALL_OBJECTS2) $(ALL_OBJECTS3) $(ALL_OBJECTS4)
+all: main-template.cpp $(ALL_OBJECTS0) $(ALL_OBJECTS1) $(ALL_OBJECTS2) $(ALL_OBJECTS3) $(ALL_OBJECTS4)
+	$(COMPILE_COMMAND) -o $(PROGRAM_NAME0) $(ALL_OBJECTS0) main-template.cpp 
 	$(COMPILE_COMMAND) -o $(PROGRAM_NAME1) $(ALL_OBJECTS1) main-biorobots.cpp 
 	$(COMPILE_COMMAND) -o $(PROGRAM_NAME2) $(ALL_OBJECTS2) main-celltypes3.cpp 
 	$(COMPILE_COMMAND) -o $(PROGRAM_NAME3) $(ALL_OBJECTS3) main-pred-prey-farmer.cpp 
@@ -199,6 +202,8 @@ PhysiCell_geometry.o: ./modules/PhysiCell_geometry.cpp
 	
 # user-defined PhysiCell modules
 
+template.o: ./custom_modules/template.cpp 
+	$(COMPILE_COMMAND) -c ./custom_modules/template.cpp
 biorobots.o: ./custom_modules/biorobots.cpp 
 	$(COMPILE_COMMAND) -c ./custom_modules/biorobots.cpp
 celltypes3.o: ./custom_modules/celltypes3.cpp 
@@ -212,12 +217,14 @@ interactions.o: ./custom_modules/interactions.cpp
 # next targets for nanoHUB
 install: 
 	$(MODINIT); $(MODCMD); make all
+	install --mode 0755 -D $(PROGRAM_NAME0) $(BIN)/$(PROGRAM_NAME0)
 	install --mode 0755 -D $(PROGRAM_NAME1) $(BIN)/$(PROGRAM_NAME1)
 	install --mode 0755 -D $(PROGRAM_NAME2) $(BIN)/$(PROGRAM_NAME2)
 	install --mode 0755 -D $(PROGRAM_NAME3) $(BIN)/$(PROGRAM_NAME3)
 	install --mode 0755 -D $(PROGRAM_NAME4) $(BIN)/$(PROGRAM_NAME4)
 
 distclean: clean
+	rm -f $(BIN)/$(PROGRAM_NAME0)
 	rm -f $(BIN)/$(PROGRAM_NAME1)
 	rm -f $(BIN)/$(PROGRAM_NAME2)
 	rm -f $(BIN)/$(PROGRAM_NAME3)
@@ -227,6 +234,7 @@ distclean: clean
 
 clean:
 	rm -f *.o
+	rm -f $(PROGRAM_NAME0)
 	rm -f $(PROGRAM_NAME1)
 	rm -f $(PROGRAM_NAME2)
 	rm -f $(PROGRAM_NAME3)

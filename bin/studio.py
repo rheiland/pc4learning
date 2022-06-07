@@ -108,7 +108,8 @@ class PhysiCellXMLCreator(QWidget):
         # model_name = "template"
         # model_name = "biorobots_flat"
         # model_name = "PhysiCell_settings"
-        model_name = "biorobots_flat"
+        # model_name = "biorobots_flat"
+        model_name = "template"
         # model_name = "randy_test"  #rwh
         # read_file = "data/" + model_name + ".xml"
 
@@ -299,6 +300,7 @@ class PhysiCellXMLCreator(QWidget):
         # open_act = QtGui.QAction('Open', self)
         # open_act.triggered.connect(self.open_as_cb)
         # file_menu.addAction("New (template)", self.new_model_cb, QtGui.QKeySequence('Ctrl+n'))
+        model_menu.addAction("template", self.template_cb)
         model_menu.addAction("biorobots", self.biorobots_cb)
         model_menu.addAction("celltypes3", self.celltypes3_cb)
         model_menu.addAction("pred_prey_farmer", self.pred_prey_cb)
@@ -607,6 +609,44 @@ class PhysiCellXMLCreator(QWidget):
             print("config_file = ",config_file)
             self.run_tab.exec_name.setText(exec_pgm)
             self.run_tab.config_xml_name.setText(config_file)
+
+    def template_cb(self):
+        print("\n\n\n================ copy/load sample ======================================")
+        os.chdir(self.homedir)
+        name = "template"
+        # sample_file = Path("data", name + ".xml")
+        sample_file = Path(self.absolute_data_dir, name + ".xml")
+        copy_file = "copy_" + name + ".xml"
+        shutil.copy(sample_file, copy_file)
+
+        self.config_file = copy_file
+
+        try:
+            print("template_cb():------------- copying ",sample_file," to ",copy_file)
+            shutil.copy(sample_file, copy_file)
+        except:
+            print("template_cb(): Unable to copy file(1).")
+            sys.exit(1)
+
+        try:
+            print("template_cb():------------- copying ",sample_file," to config.xml")
+            shutil.copy(sample_file, "config.xml")
+        except:
+            print("template_cb(): Unable to copy file(2).")
+            sys.exit(1)
+
+        self.add_new_model(copy_file, True)
+        self.config_file = copy_file
+        print("template_cb:   self.config_file = ",self.config_file)
+
+        self.show_sample_model()
+        if self.nanohub_flag:
+            self.run_tab.exec_name.setText('template')
+        else:
+            self.run_tab.exec_name.setText('../template')
+        self.vis_tab.show_edge = False
+        self.vis_tab.bgcolor = [1,1,1,1]
+
 
     def biorobots_cb(self):
         print("\n\n\n================ copy/load sample ======================================")

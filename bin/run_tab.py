@@ -80,9 +80,9 @@ class RunModel(QWidget):
         hbox.addWidget(QLabel("Exec:"))
         self.exec_name = QLineEdit()
         if self.nanohub_flag:
-            self.exec_name.setText('biorobots')
+            self.exec_name.setText('template')
         else:
-            self.exec_name.setText('../biorobots')
+            self.exec_name.setText('../template')
         # self.exec_name.setEnabled(False)
         hbox.addWidget(self.exec_name)
 
