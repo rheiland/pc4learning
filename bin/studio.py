@@ -415,6 +415,8 @@ class PhysiCellXMLCreator(QWidget):
         # self.models_menu.addAction(models_menu_act)
         # models_menu_act.triggered.connect(self.select_current_model_cb)
 
+        self.run_tab.cancel_model_cb()  # if a sim is already running, cancel it
+
         print("add_new_model: title suffix= ",name)
         self.setWindowTitle(self.title_prefix + name)
 
