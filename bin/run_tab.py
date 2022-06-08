@@ -135,6 +135,7 @@ class RunModel(QWidget):
 
     def run_model_cb(self):
         print("===========  run_model_cb():  ============")
+        self.run_button.setEnabled(False)
 
         # if self.nanohub_flag: # copy normal workflow of an app, strange as it is
         if True: # copy normal workflow of an app, strange as it is
@@ -234,6 +235,7 @@ class RunModel(QWidget):
         if self.p:  # process running.
             # self.p.kill()
             self.p.terminate()
+        self.run_button.setEnabled(True)
 
     def handle_stderr(self):
         data = self.p.readAllStandardError()
