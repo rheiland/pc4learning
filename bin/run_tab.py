@@ -262,3 +262,4 @@ class RunModel(QWidget):
         if self.nanohub_flag:
             self.download_menu.setEnabled(True)
         self.p = None
+        self.run_button.setEnabled(True)
