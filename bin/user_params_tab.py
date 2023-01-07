@@ -4,12 +4,11 @@ Randy Heiland (heiland@iu.edu)
 Adam Morrow, Grant Waldrow, Drew Willis, Kim Crevecoeur
 Dr. Paul Macklin (macklinp@iu.edu)
 
---- Versions ---
-0.1 - initial version
 """
 
 import sys
 import xml.etree.ElementTree as ET  # https://docs.python.org/2/library/xml.etree.elementtree.html
+import logging
 from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import QDoubleValidator
@@ -21,13 +20,22 @@ class QHLine(QFrame):
         self.setFrameShadow(QFrame.Sunken)
 
 class UserParams(QtWidgets.QWidget):
-    def __init__(self):
+    def __init__(self, dark_mode):
         super().__init__()
 
         # self.current_param = None
         self.xml_root = None
         self.count = 0
-        self.max_rows = 100  # initially
+        # self.max_rows = 100  # initially (TODO: check if enough for initial .xml)
+        self.max_rows = 200  # initially (TODO: check if enough for initial .xml)
+        self.max_rows = 125  # initially (TODO: check if enough for initial .xml)
+
+        # rf. https://www.w3.org/TR/SVG11/types.html#ColorKeywords   - well, but not true on Mac?
+        self.row_color1 = "background-color: Tan"
+        self.row_color2 =  "background-color: LightGreen"
+        if dark_mode:
+            self.row_color1 = "background-color: darkslategray"  # = rgb( 47, 79, 79)
+            self.row_color2 =  "background-color: rgb( 99, 99, 10)"
 
         #-------------------------------------------
         self.label_width = 150
@@ -158,16 +166,15 @@ class UserParams(QtWidgets.QWidget):
             hbox.addWidget(w_desc)
 
             if idx % 2 == 0:
-                w_varname.setStyleSheet("background-color: Tan")  
-                # w_cbox.setStyleSheet("background-color: Tan")   # ugly
-                w_val.setStyleSheet("background-color: Tan")  
-                w_units.setStyleSheet("background-color: Tan")  
-                w_desc.setStyleSheet("background-color: Tan")  
+                w_varname.setStyleSheet(self.row_color1)  
+                w_val.setStyleSheet(self.row_color1)  
+                w_units.setStyleSheet(self.row_color1)
+                w_desc.setStyleSheet(self.row_color1)
             else:
-                w_varname.setStyleSheet("background-color: LightGreen")  
-                w_val.setStyleSheet("background-color: LightGreen")  
-                w_units.setStyleSheet("background-color: LightGreen")  
-                w_desc.setStyleSheet("background-color: LightGreen")  
+                w_varname.setStyleSheet(self.row_color2)  
+                w_val.setStyleSheet(self.row_color2)  
+                w_units.setStyleSheet(self.row_color2)
+                w_desc.setStyleSheet(self.row_color2)
 
             # w.setStyleSheet("background-color: lightgray")
             # w.setStyleSheet("background-color: #e4e4e4")
@@ -191,9 +198,24 @@ class UserParams(QtWidgets.QWidget):
         self.layout.addLayout(controls_hbox)
         self.layout.addWidget(self.scroll_area)
 
+    def set_colors(self, color1, color2):
+        self.row_color1 = color1 
+        self.row_color2 = color2 
+        for idx in range(self.max_rows):
+            if idx % 2 == 0:
+                w_varname.setStyleSheet(self.row_color1)  
+                w_val.setStyleSheet(self.row_color1)  
+                w_units.setStyleSheet(self.row_color1)
+                w_desc.setStyleSheet(self.row_color1)
+            else:
+                w_varname.setStyleSheet(self.row_color2)  
+                w_val.setStyleSheet(self.row_color2)  
+                w_units.setStyleSheet(self.row_color2)
+                w_desc.setStyleSheet(self.row_color2)
+
     # @QtCore.Slot()
     def clear_rows_cb(self):
-        print("----- clearing all selected rows")
+        # print("----- clearing all selected rows")
         for idx in range(self.count):
             if self.select[idx].isChecked():
                 self.name[idx].clear()
@@ -253,21 +275,20 @@ class UserParams(QtWidgets.QWidget):
             # w.setStyleSheet("background-color: lightgray")
 
             if idx % 2 == 0:
-                w_varname.setStyleSheet("background-color: Tan")  
-                # w_cbox.setStyleSheet("background-color: Tan")   # ugly
-                w_val.setStyleSheet("background-color: Tan")  
-                w_units.setStyleSheet("background-color: Tan")  
-                w_desc.setStyleSheet("background-color: Tan")  
+                w_varname.setStyleSheet(self.row_color1)  
+                w_val.setStyleSheet(self.row_color1)  
+                w_units.setStyleSheet(self.row_color1)  
+                w_desc.setStyleSheet(self.row_color1)  
             else:
-                w_varname.setStyleSheet("background-color: LightGreen")  
-                w_val.setStyleSheet("background-color: LightGreen")  
-                w_units.setStyleSheet("background-color: LightGreen")  
-                w_desc.setStyleSheet("background-color: LightGreen")  
+                w_varname.setStyleSheet(self.row_color2)  
+                w_val.setStyleSheet(self.row_color2)  
+                w_units.setStyleSheet(self.row_color2)  
+                w_desc.setStyleSheet(self.row_color2)  
 
             self.main_layout.addLayout(hbox)
 
             self.count = self.count + 1
-            print(self.count)
+            # print(self.count)
     #     # self.text.setText(random.choice(self.hello))
     #     pass
 
@@ -290,11 +311,11 @@ class UserParams(QtWidgets.QWidget):
 
     # populate the GUI tab with what is in the .xml
     def fill_gui(self):
-        print("\n\n------------  user_params_tab: fill_gui --------------")
+        logging.debug(f'\n\n------------  user_params_tab: fill_gui --------------')
         # pass
         uep_user_params = self.xml_root.find(".//user_parameters")
         # custom_data_path = ".//cell_definition[" + str(self.idx_current_cell_def) + "]//custom_data//"
-        print('uep_user_params=',uep_user_params)
+        logging.debug(f'uep_user_params= {uep_user_params}')
 
         idx = 0
         # rwh/TODO: if we have more vars than we initially created rows for, we'll need
@@ -334,10 +355,10 @@ class UserParams(QtWidgets.QWidget):
 
     # Generate the .xml to reflect changes in the GUI
     def fill_xml(self):
-        print("--------- user_params_tab.py:  fill_xml(): self.count = ",self.count)
+        logging.debug(f'\n--------- user_params_tab.py:  fill_xml(): self.count = {self.count}')
         uep = self.xml_root.find('.//user_parameters')
         if uep:
-            print("--------- found //user_parameters")
+            logging.debug(f'--------- found //user_parameters')
             # Begin by removing all previously defined user params in the .xml
             # weird, this only removes the 1st child
             for var in list(uep):
@@ -354,7 +375,7 @@ class UserParams(QtWidgets.QWidget):
         for idx in range(self.count):
             vname = self.name[idx].text()
             if vname:  # only deal with rows having names
-                print(vname)
+                logging.debug(f'{vname}')
                 elm = ET.Element(vname, 
                     {"type":self.type[idx].currentText(), 
                      "units":self.units[idx].text(),
@@ -366,4 +387,4 @@ class UserParams(QtWidgets.QWidget):
                 uep.insert(knt,elm)
                 knt += 1
         elm.tail = '\n    '
-        print("found ",knt)
+        logging.debug(f'found {knt}')

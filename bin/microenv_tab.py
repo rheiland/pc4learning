@@ -7,6 +7,7 @@ Dr. Paul Macklin (macklinp@iu.edu)
 
 import sys
 import copy
+import logging
 import xml.etree.ElementTree as ET  # https://docs.python.org/2/library/xml.etree.elementtree.html
 # from ElementTree_pretty import prettify
 
@@ -32,6 +33,9 @@ class SubstrateDef(QWidget):
         self.celldef_tab = None
         self.new_substrate_count = 1
 
+        self.default_rate_units = "1/min"
+        self.dirichlet_units = "mmHG"
+
         # self.stacked_w = QStackedWidget()
         # self.stack_w = []
         # self.stack_w.append(QStackedWidget())
@@ -39,14 +43,18 @@ class SubstrateDef(QWidget):
 
         #---------------
         # self.cell_defs = CellDefInstances()
-        self.microenv_hbox = QHBoxLayout()
+        # self.microenv_hbox = QHBoxLayout()
 
         splitter = QSplitter()
+        leftwidth = 150
+        # splitter.setSizes([split_leftwidth, self.width() - leftwidth])
+        # splitter.setSizes([leftwidth, self.width() - leftwidth])
 
         tree_widget_width = 240
         tree_widget_height = 400
 
         self.tree = QTreeWidget() # tree is overkill; list would suffice; Meh.
+        self.tree.setFocusPolicy(QtCore.Qt.NoFocus)  # don't allow arrow keys to select
         # self.tree.itemDoubleClicked.connect(self.treeitem_edit_cb)
         # self.tree.setStyleSheet("background-color: lightgray")
 
@@ -78,14 +86,52 @@ class SubstrateDef(QWidget):
         #-------------------------
         # self.name_list = QListWidget() # tree is overkill; list would suffice; meh.
 
-        self.microenv_hbox.addWidget(self.tree)
+        # self.microenv_hbox.addWidget(self.tree)
         # self.microenv_hbox.addWidget(self.name_list)
 
 
         self.scroll_substrate_tree = QScrollArea()
-        self.scroll_substrate_tree.setWidget(self.tree)
+        # self.scroll_substrate_tree.setFixedWidth(tree_widget_width)
+
+        # self.tree_w = QWidget()
+        tree_w_vbox = QVBoxLayout()
+        tree_w_vbox.addWidget(self.tree)
+
+        # self.scroll_substrate_tree.setWidget(self.tree)
         # self.scroll_substrate_tree.setWidget(self.name_list)
 
+        #---------
+        tree_w_hbox = QHBoxLayout()
+        self.new_button = QPushButton("New")
+        self.new_button.clicked.connect(self.new_substrate)
+        self.new_button.setStyleSheet("background-color: lightgreen")
+        bwidth = 70
+        bheight = 32
+        # self.new_button.setFixedWidth(bwidth)
+        tree_w_hbox.addWidget(self.new_button)
+
+        self.copy_button = QPushButton("Copy")
+        self.copy_button.clicked.connect(self.copy_substrate)
+        self.copy_button.setStyleSheet("background-color: lightgreen")
+        # self.copy_button.setFixedWidth(bwidth)
+        tree_w_hbox.addWidget(self.copy_button)
+
+        self.delete_button = QPushButton("Delete")
+        self.delete_button.clicked.connect(self.delete_substrate)
+        self.delete_button.setStyleSheet("background-color: yellow")
+        # self.delete_button.setFixedWidth(bwidth)
+        tree_w_hbox.addWidget(self.delete_button)
+
+
+        #---------
+        self.tree_w = QWidget()
+        # self.tree_w.setFixedWidth(tree_widget_width)
+        # self.tree_w.setFixedHeight(tree_widget_height)
+        tree_w_vbox.addLayout(tree_w_hbox)
+        self.tree_w.setLayout(tree_w_vbox)
+        self.scroll_substrate_tree.setWidget(self.tree_w)
+        # self.scroll_substrate_tree.setWidget(self.tree)
+        #---------
         # splitter.addWidget(self.tree)
         splitter.addWidget(self.scroll_substrate_tree)
 
@@ -109,18 +155,6 @@ class SubstrateDef(QWidget):
         # self.microenv_hbox.addWidget(self.)
 
         #------------------
-        controls_hbox = QHBoxLayout()
-        self.new_button = QPushButton("New")
-        self.new_button.clicked.connect(self.new_substrate)
-        controls_hbox.addWidget(self.new_button)
-
-        self.copy_button = QPushButton("Copy")
-        self.copy_button.clicked.connect(self.copy_substrate)
-        controls_hbox.addWidget(self.copy_button)
-
-        self.delete_button = QPushButton("Delete")
-        self.delete_button.clicked.connect(self.delete_substrate)
-        controls_hbox.addWidget(self.delete_button)
 
         # self.vbox.addLayout(hbox)
         # self.vbox.addWidget(QHLine())
@@ -171,7 +205,7 @@ class SubstrateDef(QWidget):
         # self.decay_rate.enter.connect(self.save_xml)
         hbox.addWidget(self.decay_rate)
 
-        units = QLabel("1/min")
+        units = QLabel(self.default_rate_units)
         units.setFixedWidth(units_width)
         hbox.addWidget(units)
         self.vbox.addLayout(hbox)
@@ -189,9 +223,9 @@ class SubstrateDef(QWidget):
         # self.init_cond.enter.connect(self.save_xml)
         hbox.addWidget(self.init_cond)
 
-        units = QLabel("mmol")
-        units.setFixedWidth(units_width)
-        hbox.addWidget(units)
+        self.init_cond_units = QLabel(self.dirichlet_units)
+        self.init_cond_units.setFixedWidth(units_width)
+        hbox.addWidget(self.init_cond_units)
         self.vbox.addLayout(hbox)
         #----------
 
@@ -207,9 +241,9 @@ class SubstrateDef(QWidget):
         # self.bdy_cond.enter.connect(self.save_xml)
         hbox.addWidget(self.dirichlet_bc)
 
-        units = QLabel("mmol")
-        units.setFixedWidth(units_width-45)  # decrease for better alignment
-        hbox.addWidget(units)
+        self.dirichlet_bc_units = QLabel(self.dirichlet_units)
+        self.dirichlet_bc_units.setFixedWidth(units_width)
+        hbox.addWidget(self.dirichlet_bc_units)
 
 # 			<Dirichlet_boundary_condition units="dimensionless" enabled="false">0</Dirichlet_boundary_condition>
         self.dirichlet_bc_enabled = QCheckBox("on")
@@ -386,8 +420,8 @@ class SubstrateDef(QWidget):
 
         self.layout = QVBoxLayout(self)
 
-        self.layout.addLayout(controls_hbox)
-
+        # self.layout.addLayout(controls_hbox)
+ 
         # self.layout.addWidget(self.tabs)
         # self.layout.addWidget(QHLine())
         # self.layout.addWidget(self.params)
@@ -442,27 +476,30 @@ class SubstrateDef(QWidget):
             self.dirichlet_zmax.setText(text)
 
     def dirichlet_toggle_cb(self):
-        # print("dirichlet_toggle_cb()")
-        self.param_d[self.current_substrate]["dirichlet_enabled"] = self.dirichlet_bc_enabled.isChecked()
-        if self.dirichlet_bc_enabled.isChecked():
-            options_flag = True
-        else:
-            options_flag = False
-        self.enable_xmin.setChecked(options_flag)
-        self.enable_xmax.setChecked(options_flag)
-        self.enable_ymin.setChecked(options_flag)
-        self.enable_ymax.setChecked(options_flag)
-        self.enable_zmin.setChecked(options_flag)
-        self.enable_zmax.setChecked(options_flag)
+        return  # until we determine a more logical way to deal with this
 
-        if options_flag:
-            sval = self.dirichlet_bc.text() 
-            self.dirichlet_xmin.setText(sval)
-            self.dirichlet_xmax.setText(sval)
-            self.dirichlet_ymin.setText(sval)
-            self.dirichlet_ymax.setText(sval)
-            self.dirichlet_zmin.setText(sval)
-            self.dirichlet_zmax.setText(sval)
+        # print("dirichlet_toggle_cb()")
+        # self.param_d[self.current_substrate]["dirichlet_enabled"] = self.dirichlet_bc_enabled.isChecked()
+        # if self.dirichlet_bc_enabled.isChecked():
+        #     options_flag = True
+        # else:
+        #     options_flag = False
+        # self.enable_xmin.setChecked(options_flag)
+        # self.enable_xmax.setChecked(options_flag)
+        # self.enable_ymin.setChecked(options_flag)
+        # self.enable_ymax.setChecked(options_flag)
+        # self.enable_zmin.setChecked(options_flag)
+        # self.enable_zmax.setChecked(options_flag)
+
+        # if options_flag:
+        #     sval = self.dirichlet_bc.text() 
+        #     self.dirichlet_xmin.setText(sval)
+        #     self.dirichlet_xmax.setText(sval)
+        #     self.dirichlet_ymin.setText(sval)
+        #     self.dirichlet_ymax.setText(sval)
+        #     self.dirichlet_zmin.setText(sval)
+        #     self.dirichlet_zmax.setText(sval)
+
 
     # global to all substrates
     def gradients_cb(self):
@@ -518,7 +555,9 @@ class SubstrateDef(QWidget):
         self.param_d[subname]["diffusion_coef"] = text
         self.param_d[subname]["decay_rate"] = text
         self.param_d[subname]["init_cond"] = text
+        self.param_d[subname]["init_cond_units"] = "dimensionless"
         self.param_d[subname]["dirichlet_bc"] = text
+        self.param_d[subname]["dirichlet_bc_units"] = "dimensionless"
         bval = False
         self.param_d[subname]["dirichlet_enabled"] = bval
 
@@ -621,14 +660,14 @@ class SubstrateDef(QWidget):
         # msgBox.buttonClicked.connect(msgButtonClick)
 
         returnValue = msgBox.exec()
-        if returnValue == QMessageBox.Ok:
-            print('OK clicked')
+        # if returnValue == QMessageBox.Ok:
+            # print('OK clicked')
 
     #----------------------------------------------------------------------
     # @QtCore.Slot()
     def delete_substrate(self):
         num_items = self.tree.invisibleRootItem().childCount()
-        print('------ delete_substrate: num_items=',num_items)
+        logging.debug(f'------ delete_substrate: num_items= {num_items}')
         if num_items == 1:
             # print("Not allowed to delete all substrates.")
             # QMessageBox.information(self, "Not allowed to delete all substrates")
@@ -716,7 +755,9 @@ class SubstrateDef(QWidget):
         self.diffusion_coef.setText(self.param_d[self.current_substrate]["diffusion_coef"])
         self.decay_rate.setText(self.param_d[self.current_substrate]["decay_rate"])
         self.init_cond.setText(self.param_d[self.current_substrate]["init_cond"])
+        self.init_cond_units.setText(self.param_d[self.current_substrate]["init_cond_units"])
         self.dirichlet_bc.setText(self.param_d[self.current_substrate]["dirichlet_bc"])
+        self.dirichlet_bc_units.setText(self.param_d[self.current_substrate]["dirichlet_bc_units"])
         self.dirichlet_bc_enabled.setChecked(self.param_d[self.current_substrate]["dirichlet_enabled"])
 
         # xmin = self.param_d[self.current_substrate]["dirichlet_xmin"]
@@ -766,7 +807,7 @@ class SubstrateDef(QWidget):
 # -->
 #  		</variable>
     def populate_tree(self):
-        print("=======================  microenv populate_tree  ======================= ")
+        logging.debug(f'=======================  microenv populate_tree  ======================= ')
         uep = self.xml_root.find(".//microenvironment_setup")
         if uep:
             # self.substrate.clear()
@@ -821,6 +862,11 @@ class SubstrateDef(QWidget):
                     self.param_d[substrate_name]["init_cond"] = init_cond
                     if idx == 1:
                         self.init_cond.setText(init_cond)
+                    
+                    dc_ic_units = var_path.find('.//initial_condition').attrib['units']  # omg
+                    logging.debug(f'dc_ic_units =  {dc_ic_units}')
+                    self.param_d[substrate_name]["init_cond_units"] = dc_ic_units
+                    # sys.exit(1)
 
 			# <Dirichlet_boundary_condition units="dimensionless" enabled="false">1</Dirichlet_boundary_condition>
                     dirichlet_bc_path = var_path.find('.//Dirichlet_boundary_condition')
@@ -829,6 +875,10 @@ class SubstrateDef(QWidget):
                     self.param_d[substrate_name]["dirichlet_bc"] = dirichlet_bc
                     # if idx == 1:
                     #     self.dirichlet_bc.setText(dirichlet_bc)
+
+                    dc_bc_units = dirichlet_bc_path.attrib['units']  # omg
+                    logging.debug(f'dc_bc_units = {dc_bc_units}')
+                    self.param_d[substrate_name]["dirichlet_bc_units"] = dc_bc_units
 
                     if dirichlet_bc_path.attrib['enabled'].lower() == "false":
                         self.param_d[substrate_name]["dirichlet_enabled"] = False
@@ -862,10 +912,10 @@ class SubstrateDef(QWidget):
                     if options_path:
                         # self.dirichlet_options_exist = True
                         for bv in options_path:
-                            print("bv = ",bv)
+                            logging.debug(f'bv = {bv}')
                             if "xmin" in bv.attrib['ID'].lower():
                                 self.param_d[substrate_name]["dirichlet_xmin"] = bv.text
-                                print("   -------- ",substrate_name, ":  dirichlet_xmin = ",bv.text)
+                                logging.debug(f'   -------- {substrate_name}:  dirichlet_xmin = {bv.text}')
 
                                 # BEWARE: doing a 'setText' here will invoke the callback associated with
                                 # the widget (e.g., self.dirichlet_xmin.textChanged.connect(self.dirichlet_xmin_changed))
@@ -889,7 +939,7 @@ class SubstrateDef(QWidget):
                                     self.param_d[substrate_name]["enable_ymin"] = True
                             elif "ymax" in bv.attrib['ID']:
                                 self.param_d[substrate_name]["dirichlet_ymax"] = bv.text
-                                self.dirichlet_ymax.setText(bv.text)
+                                # self.dirichlet_ymax.setText(bv.text)
                                 if "true" in bv.attrib['enabled'].lower():
                                     self.param_d[substrate_name]["enable_ymax"] = True
                             elif "zmin" in bv.attrib['ID']:
@@ -921,7 +971,7 @@ class SubstrateDef(QWidget):
                     # self.gradients.setChecked(False)
                     # self.track_in_agents.setChecked(False)
                     for opt in var:
-                        print("------- options: ",opt)
+                        logging.debug(f'------- options: {opt}')
                         if "calculate_gradients" in opt.tag:
                             if "true" in opt.text.lower():
                                 # self.gradients.setChecked(True)
@@ -930,8 +980,6 @@ class SubstrateDef(QWidget):
                             if "true" in opt.text.lower():
                                 # self.track_in_agents.setChecked(True)
                                 self.param_d["track_in_agents"] = True
-
-                    
 
             # options_path = uep.find(".//options")
             # print(" ---- options_path = ", options_path)
@@ -957,7 +1005,7 @@ class SubstrateDef(QWidget):
         self.tree.setCurrentItem(self.tree.topLevelItem(0))  # select the top (0th) item
         self.tree_item_clicked_cb(self.tree.topLevelItem(0), 0)  # and invoke its callback to fill widget values
 
-        print("\n\n=======================  leaving microenv populate_tree  ======================= ")
+        logging.debug(f'\n\n=======================  leaving microenv populate_tree  =====================')
         # for k in self.param_d.keys():
         #     print(" ===>>> ",k, " : ", self.param_d[k])
 
@@ -1059,7 +1107,7 @@ class SubstrateDef(QWidget):
                 self.iterate_tree(item, child_count)
                 
     def fill_xml(self):
-        print("----------- microenv_tab.py: fill_xml(): ----------")
+        logging.debug(f'----------- microenv_tab.py: fill_xml(): ----------')
         uep = self.xml_root.find('.//microenvironment_setup') # guaranteed to exist since we start with a valid model
         vp = []   # pointers to <variable> nodes
         if uep:
@@ -1072,9 +1120,9 @@ class SubstrateDef(QWidget):
         # Obtain a list of all substrates in self.tree (QTreeWidget()). Used below.
         substrates_in_tree = []
         num_subs = self.tree.invisibleRootItem().childCount()  # rwh: get number of items in tree
-        print('num subtrates = ',num_subs)
+        logging.debug(f'microenv_tab.py: fill_xml(): num subtrates = {num_subs}')
         self.iterate_tree(self.tree.invisibleRootItem(), num_subs, substrates_in_tree)
-        print("substrates_in_tree =",substrates_in_tree)
+        logging.debug(f'substrates_in_tree ={substrates_in_tree}')
 
         uep = self.xml_root.find('.//microenvironment_setup')
         indent1 = '\n'
@@ -1084,9 +1132,9 @@ class SubstrateDef(QWidget):
 
         idx = 0
         for substrate in self.param_d.keys():
-            print('key in param_d.keys() = ',substrate)
+            logging.debug(f'microrenv_tab.py: key in param_d.keys() = {substrate}')
             if substrate in substrates_in_tree:
-                print("matched! ",substrate)
+                logging.debug(f'matched! {substrate}')
 	# 	<variable name="glue" units="dimensionless" ID="1">
 	# 		<physical_parameter_set>
 	# 			<diffusion_coefficient units="micron^2/min">422.0</diffusion_coefficient>
@@ -1115,15 +1163,20 @@ class SubstrateDef(QWidget):
                 subelm2 = ET.SubElement(subelm, "diffusion_coefficient",{"units":"micron^2/min"})
                 subelm2.text = self.param_d[substrate]["diffusion_coef"]
                 subelm2.tail = indent10
-                subelm2 = ET.SubElement(subelm, "decay_rate",{"units":"1/min"})
+                subelm2 = ET.SubElement(subelm, "decay_rate",{"units":self.default_rate_units})
                 subelm2.text = self.param_d[substrate]["decay_rate"]
                 subelm2.tail = indent8
 
-                subelm = ET.SubElement(elm, 'initial_condition', {"units":"mmHg"})
+                    # self.param_d[substrate_name]["init_cond_units"] = dc_ic_units
+                # subelm = ET.SubElement(elm, 'initial_condition', {"units":"mmHg"})
+                subelm = ET.SubElement(elm, 'initial_condition', {"units":self.param_d[substrate]["init_cond_units"]})
                 subelm.text = self.param_d[substrate]["init_cond"]
                 subelm.tail = indent8
+                    # self.param_d[substrate_name]["dirichlet_bc_units"] = dc_bc_units
                 subelm = ET.SubElement(elm, "Dirichlet_boundary_condition",
-                        {"units":"mmHg", "enabled":str(self.param_d[substrate]["dirichlet_enabled"])})
+                        {"units":self.param_d[substrate]["dirichlet_bc_units"], 
+                         "enabled":str(self.param_d[substrate]["dirichlet_enabled"]) })
+                        # {"units":"mmHg", "enabled":str(self.param_d[substrate]["dirichlet_enabled"])})
                 subelm.text = self.param_d[substrate]["dirichlet_bc"]
                 subelm.tail = indent8
 
