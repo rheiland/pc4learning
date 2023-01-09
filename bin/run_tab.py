@@ -35,7 +35,8 @@ class RunModel(QWidget):
         # self.nanohub = True
         self.tree = None
         # following set in studio.py
-        self.homedir = ''   
+        # self.homedir = ''   
+        self.current_dir = ''   
         self.config_tab = None
         self.microenv_tab = None
         self.celldef_tab = None
@@ -138,7 +139,8 @@ class RunModel(QWidget):
         if True: # copy normal workflow of an app, strange as it is
 
             # make sure we are where we started (app's root dir)
-            os.chdir(self.homedir)
+            # os.chdir(self.homedir)
+            os.chdir(self.current_dir)
 
             # remove any previous data
             # NOTE: this dir name needs to match the <folder>  in /data/<config_file.xml>
