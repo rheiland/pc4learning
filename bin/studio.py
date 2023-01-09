@@ -315,7 +315,8 @@ class PhysiCellXMLCreator(QWidget):
             # # self.rules_tab.fill_gui()
             # self.tabWidget.addTab(self.ics_tab,"ICs")
 
-            self.run_tab = RunModel(self.nanohub_flag, self.tabWidget, self.rules_flag, self.download_menu)
+            # self.run_tab = RunModel(self.nanohub_flag, self.tabWidget, self.rules_flag, self.download_menu)
+            self.run_tab = RunModel(self.nanohub_flag, self.tabWidget, self.download_menu)
             # self.homedir = os.getcwd()
             # print("studio.py: self.homedir = ",self.homedir)
             # self.run_tab.homedir = self.homedir
