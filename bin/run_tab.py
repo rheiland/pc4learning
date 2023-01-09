@@ -182,7 +182,7 @@ class RunModel(QWidget):
             # else:
                 # os.system('rm -rf output*')
             time.sleep(1)
-            if self.nanohub_flag and s.path.isdir('tmpdir'):
+            if self.nanohub_flag and os.path.isdir('tmpdir'):
                 # something on NFS causing issues...
                 tname = tempfile.mkdtemp(suffix='.bak', prefix='tmpdir_', dir='.')
                 shutil.move('tmpdir', tname)
