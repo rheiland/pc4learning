@@ -190,11 +190,13 @@ class RunModel(QWidget):
             else:
                 # os.makedirs('output')
                 self.output_dir = self.config_tab.folder.text()
-                # os.system('rm -rf tmpdir*')
-                os.system('rm -rf ' + self.output_dir)
-                logging.debug(f'run_tab.py:  doing: mkdir {self.output_dir}')
-                os.makedirs(self.output_dir)  # do 'mkdir output_dir'
-                time.sleep(1)
+                print("run_tab: output_dir=",self.output_dir)
+                if len(self.output_dir) > 2:
+                    # os.system('rm -rf tmpdir*')
+                    os.system('rm -rf ' + self.output_dir)
+                    logging.debug(f'run_tab.py:  doing: mkdir {self.output_dir}')
+                    os.makedirs(self.output_dir)  # do 'mkdir output_dir'
+                    time.sleep(1)
 
             # write the default config file to tmpdir
             # new_config_file = "tmpdir/config.xml"  # use Path; work on Windows?
