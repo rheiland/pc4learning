@@ -90,11 +90,11 @@ class RunModel(QWidget):
         hbox.addWidget(QLabel("Exec:"))
         self.exec_name = QLineEdit()
         if self.nanohub_flag:
-            self.exec_name.setText('template')
+            self.exec_name.setText('biorobots')
             # self.exec_name.setEnabled(False)
         else:
             # self.exec_name.setText('../myproj')
-            self.exec_name.setText('template')
+            self.exec_name.setText('../biorobots')
         hbox.addWidget(self.exec_name)
 
         hbox.addWidget(QLabel("Config:"))
@@ -173,6 +173,7 @@ class RunModel(QWidget):
             # make sure we are where we started (app's root dir)
             logging.debug(f'\n------>>>> doing os.chdir to {self.current_dir}')
             os.chdir(self.current_dir)
+            # os.chdir(self.homedir)
 
             # remove any previous data
             # NOTE: this dir name needs to match the <folder>  in /data/<config_file.xml>

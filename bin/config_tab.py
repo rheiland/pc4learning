@@ -20,15 +20,14 @@ class QHLine(QFrame):
 
 
 class Config(QWidget):
-    # def __init__(self, nanohub_flag):
-    def __init__(self, studio_flag):
+    def __init__(self, studio_flag, nanohub_flag):
         super().__init__()
         # global self.config_params
 
         self.default_time_units = "min"
 
-        # self.nanohub_flag = nanohub_flag
-        self.nanohub_flag = False
+        self.nanohub_flag = nanohub_flag
+        # self.nanohub_flag = False
 
         self.studio_flag = studio_flag
         self.vis_tab = None
