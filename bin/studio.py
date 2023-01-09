@@ -30,6 +30,7 @@ from config_tab import Config
 from cell_def_tab import CellDef 
 from microenv_tab import SubstrateDef 
 from user_params_tab import UserParams 
+from populate_tree_cell_defs import populate_tree_cell_defs
 from run_tab import RunModel 
 from vis_tab import Vis 
 
@@ -54,6 +55,9 @@ class PhysiCellXMLCreator(QWidget):
     # def __init__(self, parent = None):
     def __init__(self, show_vis_flag, parent = None):
         super(PhysiCellXMLCreator, self).__init__(parent)
+
+        # self.skip_validate_flag = skip_validate_flag 
+        self.skip_validate_flag = True 
 
         # self.nanohub = True
         self.nanohub_flag = False
@@ -181,12 +185,16 @@ class PhysiCellXMLCreator(QWidget):
 
         # self.tab2.tree.setCurrentItem(QTreeWidgetItem,0)  # item
 
-        self.celldef_tab = CellDef()
+        # self.celldef_tab = CellDef()
+        self.celldef_tab = CellDef(False)
         self.celldef_tab.xml_root = self.xml_root
         cd_name = self.celldef_tab.first_cell_def_name()
         print("studio.py: cd_name=",cd_name)
-        self.celldef_tab.populate_tree()
+        # self.celldef_tab.populate_tree()
         self.celldef_tab.fill_substrates_comboboxes()
+
+        populate_tree_cell_defs(self.celldef_tab, self.skip_validate_flag)
+
         # self.vis_tab.substrates_cbox_changed_cb(2)
         self.microenv_tab.celldef_tab = self.celldef_tab
 
@@ -196,7 +204,7 @@ class PhysiCellXMLCreator(QWidget):
         # self.cell_customdata_tab.fill_gui(self.celldef_tab)
         # self.celldef_tab.fill_custom_data_tab()
         
-        self.user_params_tab = UserParams()
+        self.user_params_tab = UserParams(False)
         self.user_params_tab.xml_root = self.xml_root
         self.user_params_tab.fill_gui()
 
