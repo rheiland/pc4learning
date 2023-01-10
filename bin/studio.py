@@ -510,7 +510,8 @@ class PhysiCellXMLCreator(QWidget):
         self.celldef_tab.xml_root = self.xml_root
         cd_name = self.celldef_tab.first_cell_def_name()
         print("studio.py: cd_name=",cd_name)
-        self.celldef_tab.populate_tree()
+        # self.celldef_tab.populate_tree()
+        populate_tree_cell_defs(self.celldef_tab, self.skip_validate_flag)
         self.celldef_tab.fill_substrates_comboboxes()
         # self.vis_tab.substrates_cbox_changed_cb(2)
         self.microenv_tab.celldef_tab = self.celldef_tab
@@ -556,7 +557,8 @@ class PhysiCellXMLCreator(QWidget):
 
         # self.celldef_tab.clear_gui()
         self.celldef_tab.clear_custom_data_params()
-        self.celldef_tab.populate_tree()
+        # self.celldef_tab.populate_tree()
+        populate_tree_cell_defs(self.celldef_tab, self.skip_validate_flag)
         # self.celldef_tab.fill_gui(None)
         # self.celldef_tab.customize_cycle_choices() #rwh/todo: needed? 
         self.celldef_tab.fill_substrates_comboboxes()
