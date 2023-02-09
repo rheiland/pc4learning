@@ -1,3 +1,3 @@
 #!/bin/sh
 
-/usr/bin/invoke_app "$@" -C "python @tool/bin/pmb.py" -t pc4learning -u anaconda3-5.1
+/usr/bin/invoke_app "$@" -C "python @tool/bin/pmb.py --studio" -t pc4learning -u anaconda3-5.1
