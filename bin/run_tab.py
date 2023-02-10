@@ -31,6 +31,7 @@ class RunModel(QWidget):
         super().__init__()
 
         self.nanohub_flag = nanohub_flag
+        self.actual_nanohub_flag = False  # reset in pmb.py
         self.tab_widget = tab_widget
         self.rules_flag = rules_flag
         self.download_menu = download_menu
@@ -174,10 +175,12 @@ class RunModel(QWidget):
             # make sure we are where we started (app's root dir)
             # logging.debug(f'\n------>>>> doing os.chdir to {self.current_dir}')
             print(f'\nrun_tab.py------>>>> doing os.chdir to {self.current_dir}')
-            os.chdir(self.current_dir)
+            os.chdir(self.current_dir)  # was "homedir"
             # remove any previous data
             # NOTE: this dir name needs to match the <folder>  in /data/<config_file.xml>
             if self.nanohub_flag:
+                # print(f'\nrun_tab.py: -- nanohub workflow: chdir to {self.current_dir}')
+                print(f'\nrun_tab.py: -- nanohub workflow: rm -rf tmpdir*; mkdir tmpdir')
                 os.system('rm -rf tmpdir*')
                 time.sleep(1)
                 if os.path.isdir('tmpdir'):
@@ -186,6 +189,13 @@ class RunModel(QWidget):
                     shutil.move('tmpdir', tname)
                 os.makedirs('tmpdir')
                 tdir = os.path.abspath('tmpdir')
+                print(f'\nrun_tab.py: -- nanohub workflow: chdir to {tdir}')
+                os.chdir(tdir)   # run exec from here on nanoHUB
+
+                new_config_file = Path(tdir,"config.xml")
+                self.celldef_tab.config_path = new_config_file  # ??
+                self.update_xml_from_gui()
+                self.tree.write(new_config_file)  # saves modified XML to <output_dir>/config.xml 
             else:
                 self.output_dir = self.config_tab.folder.text()
                 os.system('rm -rf ' + self.output_dir)
@@ -193,22 +203,22 @@ class RunModel(QWidget):
                 os.makedirs(self.output_dir)  # do 'mkdir output_dir'
                 time.sleep(1)
                 tdir = os.path.abspath(self.output_dir)
+                self.update_xml_from_gui()
+                self.tree.write(self.config_file)
 
 
-            new_config_file = Path(tdir,"config.xml")
-            self.celldef_tab.config_path = new_config_file
-            self.update_xml_from_gui()
+
 
             # logging.debug(f'run_tab.py: ----> writing modified model to {self.config_file}')
             # print("run_tab.py: ----> writing modified model to ",new_config_file)
-            self.tree.write(self.config_file)
+            # self.tree.write(self.config_file)
             # self.tree.write(new_config_file)  # saves modified XML to <output_dir>/config.xml 
             # sys.exit(1)
 
             # Operate from tmpdir. XML: <folder>,</folder>; temporary output goes here.  May be copied to cache later.
-            if self.nanohub_flag:
-                tdir = os.path.abspath('tmpdir')
-                os.chdir(tdir)   # run exec from here on nanoHUB
+            # if self.nanohub_flag:
+            #     tdir = os.path.abspath('tmpdir')
+            #     os.chdir(tdir)   # run exec from here on nanoHUB
             # sub.update(tdir)
             # subprocess.Popen(["../bin/myproj", "config.xml"])
 
@@ -235,10 +245,11 @@ class RunModel(QWidget):
             # self.p.start("mymodel", ['biobots.xml'])
             exec_str = self.exec_name.text()
             xml_str = self.config_xml_name.text()
-            if self.nanohub_flag:
+            if self.actual_nanohub_flag:
                 self.p.start("submit",["--local",exec_str,xml_str])
             else:
                 # logging.debug(f'\nrun_tab.py: running: {exec_str}, {xml_str}')
+                print(f'\nrun_tab.py: running: {exec_str}, {xml_str}')
                 self.p.start(exec_str, [xml_str])
 
                 # print("\n\nrun_tab.py: running: ",exec_str," output/config.xml")

@@ -86,6 +86,7 @@ class PhysiCellXMLCreator(QWidget):
         self.rules_flag = rules_flag 
         self.model3D_flag = model3D_flag 
         self.nanohub_flag = nanohub_flag 
+        self.actual_nanohub_flag = False
         print("PhysiCellXMLCreator(): self.nanohub_flag= ",self.nanohub_flag)
 
         self.ics_tab_index = 4
@@ -110,6 +111,7 @@ class PhysiCellXMLCreator(QWidget):
         if( 'HOME' in os.environ.keys() ):
             if "home/nanohub" in os.environ['HOME']:
                 self.nanohub_flag = True
+                self.actual_nanohub_flag = True
 
         self.p = None # Necessary to download files!
 
@@ -181,11 +183,11 @@ class PhysiCellXMLCreator(QWidget):
         self.config_tab.fill_gui()
         if self.nanohub_flag:  # rwh - test if works on nanoHUB
             print("pmb.py: ---- TRUE nanohub_flag: updating config_tab folder")
-            self.config_tab.folder.setText('tmpdir')
+            self.config_tab.folder.setText('.')
             self.config_tab.folder.setEnabled(False)
             self.config_tab.csv_folder.setText('')
             self.config_tab.csv_folder.setEnabled(False)
-            self.config_tab.folder.setText('tmpdir')
+            self.config_tab.folder.setText('.')
         else:
             print("pmb.py: ---- FALSE nanohub_flag: NOT updating config_tab folder")
 
@@ -293,6 +295,7 @@ class PhysiCellXMLCreator(QWidget):
             self.tabWidget.addTab(self.ics_tab,"ICs")
 
             self.run_tab = RunModel(self.nanohub_flag, self.tabWidget, self.rules_flag, self.download_menu)
+            self.run_tab.actual_nanohub_flag = self.actual_nanohub_flag  # rwh: insane testing!
 
             self.homedir = os.getcwd()
             print("pmb.py: self.homedir = ",self.homedir)
@@ -372,6 +375,7 @@ class PhysiCellXMLCreator(QWidget):
         # self.tabWidget.setCurrentIndex(2)  # rwh/debug: select Cell Types
 
 
+# https://www.pythonguis.com/faq/pyqt5-vs-pyside2/
     def about_pyqt(self):
         msgBox = QMessageBox()
         msgBox.setTextFormat(Qt.RichText)
@@ -380,6 +384,7 @@ PhysiCell Studio is developed using PyQt5.<br><br>
 
 For licensing information:<br>
 <a href="https://github.com/PyQt5/PyQt/blob/master/LICENSE">github.com/PyQt5/PyQt/blob/master/LICENSE</a>
+
 
         """
         msgBox.setText(about_text)
@@ -437,7 +442,7 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
         #--------------
         studio_menu = menubar.addMenu('&Studio')
         studio_menu.addAction("About", self.about_studio)
-        studio_menu.addAction("About PyQt", self.about_pyqt)
+        # studio_menu.addAction("About PyQt", self.about_pyqt)
         # studio_menu.addAction("Preferences", self.prefs_cb)
         if not self.nanohub_flag:
             studio_menu.addSeparator()
@@ -1069,11 +1074,10 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
         print("Load this model at: https://simularium.allencell.org/viewer")
 
 
+    #-----------------------------
     def template_nanohub_cb(self):
         os.chdir(self.homedir)
         name = "template"
-        # sample_file = Path("data", name + ".xml")
-        # sample_file = Path(self.absolute_data_dir, name + ".xml")
         sample_file = Path(self.pmb_data_dir, name + ".xml")
         copy_file = "copy_" + name + ".xml"
         try:
@@ -1097,27 +1101,23 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
         self.show_sample_model()
         if self.nanohub_flag:
             self.run_tab.exec_name.setText('template')
+            if not self.actual_nanohub_flag:
+                self.run_tab.exec_name.setText('../bin/template')
         else:
             self.run_tab.exec_name.setText('../template')
         self.vis_tab.show_edge = True
         self.vis_tab.bgcolor = [1,1,1,1]
         # self.vis_tab.reset_model()
 
+
     def biorobots_nanohub_cb(self):
-        print("\n\n\n================ copy/load sample ======================================")
         os.chdir(self.homedir)
         name = "biorobots_flat"
-        # sample_file = Path("data", name + ".xml")
-        # sample_file = Path(self.absolute_data_dir, name + ".xml")
         sample_file = Path(self.pmb_data_dir, name + ".xml")
         copy_file = "copy_" + name + ".xml"
         shutil.copy(sample_file, copy_file)
 
-        # self.add_new_model(copy_file, True)
-        # self.config_file = "config_samples/" + name + ".xml"
         self.config_file = copy_file
-        # self.show_sample_model()
-        # self.run_tab.exec_name.setText('../biorobots')
 
         try:
             print("biorobots_nanohub_cb():------------- copying ",sample_file," to ",copy_file)
@@ -1140,6 +1140,8 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
         self.show_sample_model()
         if self.nanohub_flag:
             self.run_tab.exec_name.setText('biorobots')
+            if not self.actual_nanohub_flag:
+                self.run_tab.exec_name.setText('../bin/biorobots')
         else:
             self.run_tab.exec_name.setText('../biorobots')
         self.vis_tab.show_edge = False
@@ -1147,12 +1149,8 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
 
 
     def celltypes3_nanohub_cb(self):
-        print("\n\n\n================ copy/load sample ======================================")
         os.chdir(self.homedir)
-        # name = "celltypes3_flat-with-default-celldef"
         name = "celltypes3_flat"
-        # sample_file = Path("data", name + ".xml")
-        # sample_file = Path(self.absolute_data_dir, name + ".xml")
         sample_file = Path(self.pmb_data_dir, name + ".xml")
         copy_file = "copy_" + name + ".xml"
         try:
@@ -1176,16 +1174,17 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
         self.show_sample_model()
         if self.nanohub_flag:
             self.run_tab.exec_name.setText('celltypes3')
+            if not self.actual_nanohub_flag:
+                self.run_tab.exec_name.setText('../bin/celltypes3')
         else:
             self.run_tab.exec_name.setText('../celltypes3')
         self.vis_tab.show_edge = True
         self.vis_tab.bgcolor = [0,0,0,1]
 
+
     def pred_prey_nanohub_cb(self):
         os.chdir(self.homedir)
         name = "pred_prey_flat"
-        # sample_file = Path("data", name + ".xml")
-        # sample_file = Path(self.absolute_data_dir, name + ".xml")
         sample_file = Path(self.pmb_data_dir, name + ".xml")
         copy_file = "copy_" + name + ".xml"
         try:
@@ -1209,18 +1208,18 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
         self.show_sample_model()
         if self.nanohub_flag:
             self.run_tab.exec_name.setText('pred_prey')
+            if not self.actual_nanohub_flag:
+                self.run_tab.exec_name.setText('../bin/pred_prey')
         else:
             self.run_tab.exec_name.setText('../pred_prey')
         self.vis_tab.show_edge = True
         self.vis_tab.bgcolor = [1,1,1,1]
         # self.vis_tab.reset_model()
 
+
     def interactions_nanohub_cb(self):
-        print("\n\n\n================ copy/load sample ======================================")
         os.chdir(self.homedir)
         name = "interactions"
-        # sample_file = Path("data", name + ".xml")
-        # sample_file = Path(self.absolute_data_dir, name + ".xml")
         sample_file = Path(self.pmb_data_dir, name + ".xml")
         copy_file = "copy_" + name + ".xml"
         shutil.copy(sample_file, copy_file)
@@ -1247,12 +1246,16 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
         self.show_sample_model()
         if self.nanohub_flag:
             self.run_tab.exec_name.setText('interactions')
+            if not self.actual_nanohub_flag:
+                self.run_tab.exec_name.setText('../bin/interactions')
         else:
             self.run_tab.exec_name.setText('../interactions')
         self.vis_tab.show_edge = False
         self.vis_tab.bgcolor = [1,1,1,1]
 
+
     #===================================================================
+    # callbacks for desktop (not nanoHUB) samples loading
     def template_cb(self):
         self.load_model("template")
         if self.studio_flag:

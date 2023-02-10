@@ -522,8 +522,8 @@
 
     <initial_conditions>
 		<cell_positions type="csv" enabled="false">
-			<folder>./data</folder>
-			<filename>celltypes3_cells.csv</filename>
+			<folder></folder>
+			<filename></filename>
 		</cell_positions>
 	</initial_conditions>		
 <user_parameters>

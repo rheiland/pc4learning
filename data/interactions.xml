@@ -1517,7 +1517,7 @@
 	<initial_conditions>
 		<cell_positions enabled="false" type="csv">
 			<folder />
-			<filename>cells.csv</filename>
+			<filename></filename>
 		</cell_positions>
 	</initial_conditions>	
 	

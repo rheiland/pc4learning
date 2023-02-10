@@ -83,6 +83,8 @@ class Legend(QWidget):
         self.svgView.load(legend_file)
 
     def reload_legend(self):
+        # return  # rwh: testing for nanoHUB!
+
         # print('reload_legend(): cwd = self.output_dir = ',os.getcwd())
         # self.output_dir = os.getcwd()
         print('reload_legend(): self.output_dir = ',self.output_dir)

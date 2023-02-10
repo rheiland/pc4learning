@@ -219,8 +219,8 @@
 	
 	<initial_conditions>
 		<cell_positions type="csv" enabled="false">
-			<folder>./config</folder>
-			<filename>cells.csv</filename>
+			<folder />
+			<filename></filename>
 		</cell_positions>
 	</initial_conditions>	
 	
