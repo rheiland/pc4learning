@@ -366,6 +366,7 @@ class PhysiCellXMLCreator(QWidget):
             self.vis_tab.reset_model()
             
 
+        self.template_nanohub_cb()   # hack - default 'template' model
 
         vlayout.addWidget(self.tabWidget)
         # self.addTab(self.sbml_tab,"SBML")
@@ -454,7 +455,7 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
             model_menu = menubar.addMenu('&Model')
             model_menu.addAction("template", self.template_nanohub_cb)
             model_menu.addAction("biorobots", self.biorobots_nanohub_cb)
-            model_menu.addAction("celltypes3", self.celltypes3_nanohub_cb)
+            # model_menu.addAction("celltypes3", self.celltypes3_nanohub_cb)
             model_menu.addAction("pred_prey_farmer", self.pred_prey_nanohub_cb)
             model_menu.addAction("interactions", self.interactions_nanohub_cb)
 

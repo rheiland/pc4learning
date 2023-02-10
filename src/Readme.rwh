@@ -1,0 +1,21 @@
+
+- sh cp_main.sh	
+ cp sample_projects/template/main.cpp main-template.cpp
+ cp sample_projects/biorobots/main-biorobots.cpp .
+ cp sample_projects/celltypes3/main.cpp main-celltypes3.cpp
+ cp sample_projects/pred_prey_farmer/main.cpp main-pred-prey-farmer.cpp
+ cp sample_projects/interactions/main.cpp main-interactions.cpp
+
+- edit main*.cpp and change #include to use newly name custom header
+- make
+
+Test locally:
+- sh mv_all.sh
+mv template ../bin
+mv biorobots ../bin
+mv celltypes3 ../bin
+mv pred_prey ../bin
+mv interactions ../bin
+
+
+
