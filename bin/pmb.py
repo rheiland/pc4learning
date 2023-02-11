@@ -325,10 +325,12 @@ class PhysiCellXMLCreator(QWidget):
             self.vis_tab = Vis(self.nanohub_flag)
             self.config_tab.vis_tab = self.vis_tab
             # self.vis_tab.output_dir = self.config_tab.folder.text()
-            self.vis_tab.update_output_dir(self.config_tab.folder.text())
             if self.nanohub_flag:  # rwh - test if works on nanoHUB
-                self.vis_tab.output_folder.setText('tmpdir')
-                self.vis_tab.output_folder.setEnabled(False)
+                self.vis_tab.output_folder_w.setText('tmpdir')
+                self.vis_tab.output_folder_w.setEnabled(False)
+                # self.legend_tab.output_dir = 'tmpdir'
+            else:
+                self.vis_tab.update_output_dir(self.config_tab.folder.text())
 
             self.vis_tab.config_tab = self.config_tab
             # self.vis_tab.output_dir = self.config_tab.plot_folder.text()
@@ -338,6 +340,8 @@ class PhysiCellXMLCreator(QWidget):
             self.legend_tab.current_dir = self.current_dir
             self.legend_tab.pmb_data_dir = self.pmb_data_dir
             self.run_tab.vis_tab = self.vis_tab
+            if self.nanohub_flag:  # rwh - test if works on nanoHUB
+                self.legend_tab.output_dir = 'tmpdir'
             # self.vis_tab.setEnabled(False)
             # self.vis_tab.nanohub_flag = self.nanohub_flag
             # self.vis_tab.xml_root = self.xml_root
@@ -357,8 +361,9 @@ class PhysiCellXMLCreator(QWidget):
             self.vis_tab.init_plot_range(self.config_tab)
 
             # self.vis_tab.output_dir = self.config_tab.folder.text()
-            self.vis_tab.update_output_dir(self.config_tab.folder.text())
-            self.legend_tab.output_dir = self.config_tab.folder.text()
+            if not self.nanohub_flag:
+                self.vis_tab.update_output_dir(self.config_tab.folder.text())
+                self.legend_tab.output_dir = self.config_tab.folder.text()
             legend_file = os.path.join(self.vis_tab.output_dir, 'legend.svg')  # hardcoded filename :(
             if Path(legend_file).is_file():
                 self.legend_tab.reload_legend()

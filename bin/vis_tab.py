@@ -411,10 +411,10 @@ class Vis(QWidget):
         label.setAlignment(QtCore.Qt.AlignRight)
         hbox.addWidget(label)
 
-        # self.output_folder = QLineEdit(self.output_dir)
-        self.output_folder = QLineEdit()
-        self.output_folder.returnPressed.connect(self.output_folder_cb)
-        hbox.addWidget(self.output_folder)
+        # self.output_folder_w = QLineEdit(self.output_dir)
+        self.output_folder_w = QLineEdit()
+        self.output_folder_w.returnPressed.connect(self.output_folder_w_cb)
+        hbox.addWidget(self.output_folder_w)
         hbox.addStretch(1)  # not sure about this, but keeps buttons shoved to left
         self.vbox.addLayout(hbox)
 
@@ -548,10 +548,10 @@ class Vis(QWidget):
 
         # self.create_figure()
 
-    def output_folder_cb(self):
-        # print(f"output_folder_cb(): old={self.output_dir}")
-        self.output_dir = self.output_folder.text()
-        # print(f"                    new={self.output_dir}")
+    def output_folder_w_cb(self):
+        print(f"vis_tab.py: output_folder_w_cb(): old={self.output_dir}")
+        self.output_dir = self.output_folder_w.text()
+        print(f"                    new={self.output_dir}")
 
     def cells_svg_mat_cb(self):
         radioBtn = self.sender()
@@ -579,7 +579,8 @@ class Vis(QWidget):
         else:
             print("update_output_dir(): NO, it is NOT a dir path", dir_path)
         self.output_dir = dir_path
-        self.output_folder.setText(dir_path)
+        print(f"vis_tab.py: update_output_dir(): --> {self.output_dir}")
+        self.output_folder_w.setText(dir_path)
 
     def reset_plot_range(self):
         try:  # due to the initial callback
