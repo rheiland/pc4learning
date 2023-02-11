@@ -19,7 +19,8 @@ import sys
 import argparse
 import logging
 import shutil # for possible copy of file
-from pathlib import Path
+#from pathlib import Path
+from pathlib import Path, PurePath
 import xml.etree.ElementTree as ET  # https://docs.python.org/2/library/xml.etree.elementtree.html
 from xml.dom import minidom
 import numpy as np
@@ -130,8 +131,12 @@ class PhysiCellXMLCreator(QWidget):
         logging.debug(f'self.current_dir = {self.current_dir}')
         self.pmb_root_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), '..'))
         self.pmb_data_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'data'))
+        print("self.pmb_data_dir = ",self.pmb_data_dir)
         print("self.pmb_root_dir = ",self.pmb_root_dir)
         logging.debug(f'self.pmb_root_dir = {self.pmb_root_dir}')
+
+        self.absolute_data_dir = os.path.abspath(self.pmb_data_dir)
+        print("-------- absolute_data_dir =",self.absolute_data_dir)
 
         # assume running from a PhysiCell root dir, but change if not
         self.config_dir = os.path.realpath(os.path.join('.', 'config'))
@@ -156,11 +161,6 @@ class PhysiCellXMLCreator(QWidget):
                 # model_name = "biorobots_flat"
             # model_name = "test1"
             # model_name = "interactions"
-
-            # bin_dir = os.path.dirname(os.path.abspath(__file__))
-            # data_dir = os.path.join(bin_dir,'..','data')
-            # data_dir = os.path.normpath(data_dir)
-            # data_dir = os.path.join(self.current_dir,'data')
 
             # self.current_xml_file = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'data', 'template.xml'))
             self.current_xml_file = os.path.join(self.pmb_data_dir, model_name + ".xml")
@@ -593,94 +593,50 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
 
         menubar.adjustSize()  # Argh. Otherwise, only 1st menu appears, with ">>" to others!
 
-    #-----------------------------------------------------------------
-    def add_new_model(self, name, read_only):
+
+    def purge_previous_model(self):
         self.celldef_tab.clear_custom_data_tab()
         self.celldef_tab.param_d.clear()  # seems unnecessary as being done in populate_tree. argh.
         self.celldef_tab.current_cell_def = None
         self.celldef_tab.cell_adhesion_affinity_celltype = None
 
-        # does it already exist? If so, return
-        # if name in self.model.keys():
-        #     return
-        # self.model[name] = read_only
-        # self.num_models += 1
-        # print("add_new_model(): self.model (dict)= ",self.model)
-
-        # models_menu_act = QAction(name, self)
-        # self.models_menu.addAction(models_menu_act)
-        # models_menu_act.triggered.connect(self.select_current_model_cb)
+    #-----------------------------------------------------------------
+    # only used for nanoHUB version models; why not use reset?
+    def add_new_model(self, name, read_only):
+        self.purge_previous_model()
 
         print("pmb.py: add_new_model: title suffix= ",name)
-        self.setWindowTitle(self.title_prefix + name)
+        # self.setWindowTitle(self.title_prefix + name)
+        self.setWindowTitle(self.title_prefix + os.path.basename(name))
 
-        #---------- rwh?
-        print("\n\n ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        # print("add_new_model(): self.tree = ET.parse(xml_file) for ",self.config_file)
+        print("\n\n ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         print("add_new_model(): self.tree = ET.parse(xml_file) for ",name)
-        # with open(self.config_file, 'r') as xml_file:
         with open(name, 'r') as xml_file:
             self.tree = ET.parse(xml_file)
-        # tree = ET.parse(read_file)
-        # self.tree = ET.parse(read_file)
         self.xml_root = self.tree.getroot()
-
-        # self.num_models = 0
-        # self.model = {}  # key: name, value:[read-only, tree]
-
-        #-------  Re-populate the GUI with the new model's params -------
-        # self.config_tab = Config(self.nanohub_flag)
         self.config_tab.xml_root = self.xml_root
         self.config_tab.fill_gui()
 
         # self.microenv_tab = SubstrateDef()
         self.microenv_tab.xml_root = self.xml_root
         substrate_name = self.microenv_tab.first_substrate_name()
-        print("pmb.py: substrate_name=",substrate_name)
+        print("pmb.py: add_new_model(): substrate_name=",substrate_name)
         self.microenv_tab.populate_tree()  # rwh: both fill_gui and populate_tree??
 
-        # self.tab2.tree.setCurrentItem(QTreeWidgetItem,0)  # item
-
-        # self.celldef_tab = CellDef()
         self.celldef_tab.xml_root = self.xml_root
         cd_name = self.celldef_tab.first_cell_def_name()
-        print("pmb.py: cd_name (first cell_def)=",cd_name)
-        # self.celldef_tab.populate_tree()
+        print("pmb.py: add_new_model(): cd_name (first cell_def)=",cd_name)
         populate_tree_cell_defs(self.celldef_tab, self.skip_validate_flag)
         self.celldef_tab.fill_substrates_comboboxes()
-        # self.vis_tab.substrates_cbox_changed_cb(2)
         self.microenv_tab.celldef_tab = self.celldef_tab
-
-        # self.cell_customdata_tab = CellCustomData()
-        # self.cell_customdata_tab.xml_root = self.xml_root
-        # self.cell_customdata_tab.celldef_tab = self.celldef_tab
-        # self.cell_customdata_tab.fill_gui(self.celldef_tab)
-        # self.celldef_tab.fill_custom_data_tab()
-        
-        # self.user_params_tab = UserParams()
         self.user_params_tab.xml_root = self.xml_root
         self.user_params_tab.fill_gui()
 
-    # Probably not used unless we later implement it
-    # def select_current_model_cb(self):
-    #     # models_menu_act = QtGui.QAction(name, self)
-    #     # self.models_menu.addAction(models_menu_act)
-    #     model_act = self.models_menu.menuAction()
-    #     print('select_current_model_cb: ',model_act)
-    #     action = self.sender()
-    #     model_name = action.text()
-    #     print('select_current_model_cb: title suffix name= ',model_name)
-
-    #     self.setWindowTitle(self.title_prefix + model_name)
 
     def reset_xml_root(self):
-        self.celldef_tab.clear_custom_data_tab()
-        self.celldef_tab.param_d.clear()  # seems unnecessary as being done in populate_tree. argh.
-        self.celldef_tab.current_cell_def = None
-        self.celldef_tab.cell_adhesion_affinity_celltype = None
+        self.purge_previous_model()
 
         # self.microenv_tab.param_d.clear()
-
         self.xml_root = self.tree.getroot()
         self.config_tab.xml_root = self.xml_root
         self.microenv_tab.xml_root = self.xml_root
@@ -725,7 +681,12 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
         self.tree = ET.parse(self.config_file)
         # self.xml_root = self.tree.getroot()
         self.reset_xml_root()
-        self.setWindowTitle(self.title_prefix + self.config_file)
+        title_suffix = self.config_file
+        if isinstance(title_suffix, PurePath):
+            title_suffix = os.path.basename(self.config_file)
+            print("title_suffix=",title_suffix)
+        # self.setWindowTitle(self.title_prefix + self.config_file)
+        self.setWindowTitle(self.title_prefix + title_suffix)
         # self.config_tab.fill_gui(self.xml_root)  # 
         # self.microenv_tab.fill_gui(self.xml_root)  # microenv
         # self.celldef_tab.fill_gui("foobar")  # cell defs
@@ -984,6 +945,7 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
         msg.exec_()
 
 
+    # not used in nanoHUB version
     def load_model(self,name):
         if self.studio_flag:
             self.run_tab.cancel_model_cb()  # if a sim is already running, cancel it
@@ -1082,29 +1044,15 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
 
     #-----------------------------
     def template_nanohub_cb(self):
-        os.chdir(self.homedir)
         name = "template"
         sample_file = Path(self.pmb_data_dir, name + ".xml")
-        copy_file = "copy_" + name + ".xml"
-        try:
-            print("template:------------- copying ",sample_file," to ",copy_file)
-            shutil.copy(sample_file, copy_file)
-        except:
-            print("template: Unable to copy file(1).")
-            sys.exit(1)
-
-        try:
-            print("template:------------- copying ",sample_file," to config.xml")
-            shutil.copy(sample_file, "config.xml")
-        except:
-            print("template: Unable to copy file(2).")
-            sys.exit(1)
-
-        self.add_new_model(copy_file, True)
-        self.config_file = copy_file
+        self.add_new_model(sample_file, True)
+        self.config_file = sample_file
+        self.run_tab.config_file = sample_file
         print("template:   self.config_file = ",self.config_file)
 
         self.show_sample_model()
+
         if self.nanohub_flag:
             self.run_tab.exec_name.setText('template')
             if not self.actual_nanohub_flag:
@@ -1113,37 +1061,18 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
             self.run_tab.exec_name.setText('../template')
         self.vis_tab.show_edge = True
         self.vis_tab.bgcolor = [1,1,1,1]
-        # self.vis_tab.reset_model()
 
 
     def biorobots_nanohub_cb(self):
-        os.chdir(self.homedir)
         name = "biorobots_flat"
         sample_file = Path(self.pmb_data_dir, name + ".xml")
-        copy_file = "copy_" + name + ".xml"
-        shutil.copy(sample_file, copy_file)
-
-        self.config_file = copy_file
-
-        try:
-            print("biorobots_nanohub_cb():------------- copying ",sample_file," to ",copy_file)
-            shutil.copy(sample_file, copy_file)
-        except:
-            print("biorobots_nanohub_cb(): Unable to copy file(1).")
-            sys.exit(1)
-
-        try:
-            print("biorobots_nanohub_cb():------------- copying ",sample_file," to config.xml")
-            shutil.copy(sample_file, "config.xml")
-        except:
-            print("biorobots_nanohub_cb(): Unable to copy file(2).")
-            sys.exit(1)
-
-        self.add_new_model(copy_file, True)
-        self.config_file = copy_file
-        print("biorobots_nanohub_cb:   self.config_file = ",self.config_file)
+        self.config_file = sample_file
+        self.add_new_model(sample_file, True)
+        self.run_tab.config_file = sample_file
+        # print("biorobots_nanohub_cb:   self.config_file = ",self.config_file)
 
         self.show_sample_model()
+
         if self.nanohub_flag:
             self.run_tab.exec_name.setText('biorobots')
             if not self.actual_nanohub_flag:
@@ -1155,29 +1084,15 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
 
 
     def celltypes3_nanohub_cb(self):
-        os.chdir(self.homedir)
         name = "celltypes3_flat"
         sample_file = Path(self.pmb_data_dir, name + ".xml")
-        copy_file = "copy_" + name + ".xml"
-        try:
-            print("celltypes3_cb():------------- copying ",sample_file," to ",copy_file)
-            shutil.copy(sample_file, copy_file)
-        except:
-            print("celltypes3_cb(): Unable to copy file(1).")
-            sys.exit(1)
-
-        try:
-            print("celltypes3_cb():------------- copying ",sample_file," to config.xml")
-            shutil.copy(sample_file, "config.xml")
-        except:
-            print("celltypes3_cb(): Unable to copy file(2).")
-            sys.exit(1)
-
-        self.add_new_model(copy_file, True)
-        self.config_file = copy_file
+        self.config_file = sample_file
+        self.add_new_model(sample_file, True)
+        self.run_tab.config_file = sample_file
         print("celltypes3_cb:   self.config_file = ",self.config_file)
 
         self.show_sample_model()
+
         if self.nanohub_flag:
             self.run_tab.exec_name.setText('celltypes3')
             if not self.actual_nanohub_flag:
@@ -1189,29 +1104,15 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
 
 
     def pred_prey_nanohub_cb(self):
-        os.chdir(self.homedir)
         name = "pred_prey_flat"
         sample_file = Path(self.pmb_data_dir, name + ".xml")
-        copy_file = "copy_" + name + ".xml"
-        try:
-            print("pred_prey_cb():------------- copying ",sample_file," to ",copy_file)
-            shutil.copy(sample_file, copy_file)
-        except:
-            print("pred_prey_cb(): Unable to copy file(1).")
-            sys.exit(1)
-
-        try:
-            print("pred_prey_cb():------------- copying ",sample_file," to config.xml")
-            shutil.copy(sample_file, "config.xml")
-        except:
-            print("pred_prey_cb(): Unable to copy file(2).")
-            sys.exit(1)
-
-        self.add_new_model(copy_file, True)
-        self.config_file = copy_file
+        self.config_file = sample_file
+        self.add_new_model(sample_file, True)
+        self.run_tab.config_file = sample_file
         print("pred_prey_cb:   self.config_file = ",self.config_file)
 
         self.show_sample_model()
+
         if self.nanohub_flag:
             self.run_tab.exec_name.setText('pred_prey')
             if not self.actual_nanohub_flag:
@@ -1220,36 +1121,18 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
             self.run_tab.exec_name.setText('../pred_prey')
         self.vis_tab.show_edge = True
         self.vis_tab.bgcolor = [1,1,1,1]
-        # self.vis_tab.reset_model()
 
 
     def interactions_nanohub_cb(self):
-        os.chdir(self.homedir)
         name = "interactions"
         sample_file = Path(self.pmb_data_dir, name + ".xml")
-        copy_file = "copy_" + name + ".xml"
-        shutil.copy(sample_file, copy_file)
-        self.config_file = copy_file
-
-        try:
-            print("interactions:------------- copying ",sample_file," to ",copy_file)
-            shutil.copy(sample_file, copy_file)
-        except:
-            print("interactions: Unable to copy file(1).")
-            sys.exit(1)
-
-        try:
-            print("interactions:------------- copying ",sample_file," to config.xml")
-            shutil.copy(sample_file, "config.xml")
-        except:
-            print("interactions: Unable to copy file(2).")
-            sys.exit(1)
-
-        self.add_new_model(copy_file, True)
-        self.config_file = copy_file
+        self.config_file = sample_file
+        self.add_new_model(sample_file, True)
+        self.run_tab.config_file = sample_file
         print("interactions:   self.config_file = ",self.config_file)
 
         self.show_sample_model()
+
         if self.nanohub_flag:
             self.run_tab.exec_name.setText('interactions')
             if not self.actual_nanohub_flag:

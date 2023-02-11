@@ -1,8 +1,8 @@
 """
 Authors:
 Randy Heiland (heiland@iu.edu)
-Adam Morrow, Grant Waldrow, Drew Willis, Kim Crevecoeur
 Dr. Paul Macklin (macklinp@iu.edu)
+Rf. Credits.md
 """
 
 import os
@@ -41,6 +41,7 @@ class Legend(QWidget):
         self.output_dir = '.'   # set in pmb.py
         self.current_dir = '.'   # reset in pmb.py
         self.pmb_data_dir = ''   # reset in pmb.py
+        self.nanohub_flag = nanohub_flag
         
         #-------------------------------------------
         self.scroll = QScrollArea()  # might contain centralWidget
@@ -92,6 +93,11 @@ class Legend(QWidget):
         for idx in range(4):
             print("waiting for creation of legend.svg ...",idx)
             # path = Path("legend.svg")
+            # if self.nanohub_flag:
+            #     path = Path(self.current_dir,"legend.svg")
+            # else:
+            #     path = Path(self.output_dir,"legend.svg")
+
             path = Path(self.output_dir,"legend.svg")
             # path = Path(self.current_dir,self.output_dir,"legend.svg")
             print("path = ",path)

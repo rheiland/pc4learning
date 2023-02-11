@@ -193,11 +193,17 @@ class RunModel(QWidget):
                 tdir = os.path.abspath('tmpdir')
                 print(f'\nrun_tab.py: -- nanohub workflow: chdir to {tdir}')
                 os.chdir(tdir)   # run exec from here on nanoHUB
+                self.legend_tab.output_dir = tdir
 
-                new_config_file = Path(tdir,"config.xml")
-                self.celldef_tab.config_path = new_config_file  # ??
+                # new_config_file = Path(tdir,"config.xml")
+                # self.celldef_tab.config_path = new_config_file  # ??
+                self.celldef_tab.config_path = self.config_file
+
                 self.update_xml_from_gui()
-                self.tree.write(new_config_file)  # saves modified XML to <output_dir>/config.xml 
+                # self.tree.write(new_config_file)  # saves modified XML to <output_dir>/config.xml 
+                self.tree.write(self.config_file)
+                shutil.copy(self.config_file, "config.xml")
+
             else:
                 self.output_dir = self.config_tab.folder.text()
                 os.system('rm -rf ' + self.output_dir)
@@ -205,8 +211,10 @@ class RunModel(QWidget):
                 os.makedirs(self.output_dir)  # do 'mkdir output_dir'
                 time.sleep(1)
                 tdir = os.path.abspath(self.output_dir)
+
                 self.update_xml_from_gui()
                 self.tree.write(self.config_file)
+                shutil.copy(self.config_file, "config.xml")
 
 
 

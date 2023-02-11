@@ -575,9 +575,9 @@ class Vis(QWidget):
 
     def update_output_dir(self, dir_path):
         if os.path.isdir(dir_path):
-            print("update_output_dir(): yes, it is a dir path", dir_path)
+            print("vis_tab.py: update_output_dir(): yes, it is a dir path", dir_path)
         else:
-            print("update_output_dir(): NO, it is NOT a dir path", dir_path)
+            print("vis_tab.py: update_output_dir(): NO, it is NOT a dir path", dir_path)
         self.output_dir = dir_path
         print(f"vis_tab.py: update_output_dir(): --> {self.output_dir}")
         self.output_folder_w.setText(dir_path)
@@ -731,7 +731,7 @@ class Vis(QWidget):
         self.reset_model()
 
     def reset_model(self):
-        # print("\n--------- vis_tab: reset_model ----------")
+        print("\n--------- vis_tab: reset_model ----------")
         # Verify initial.xml and at least one .svg file exist. Obtain bounds from initial.xml
         # tree = ET.parse(self.output_dir + "/" + "initial.xml")
         xml_file = Path(self.output_dir, "initial.xml")
@@ -1411,7 +1411,7 @@ class Vis(QWidget):
         try:
             tree = ET.parse(full_fname)
         except:
-            print("------ plot_svg(): error trying to parse ",full_name)
+            print("------ plot_svg(): error trying to parse ",full_fname)
             return
         root = tree.getroot()
         #  print('--- root.tag ---')
