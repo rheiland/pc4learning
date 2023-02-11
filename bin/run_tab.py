@@ -13,6 +13,7 @@ import os
 import time
 import logging
 import tempfile
+import shutil
 from pathlib import Path
 from PyQt5 import QtCore, QtGui
 # from PyQt5.QtWidgets import *
