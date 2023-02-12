@@ -307,10 +307,10 @@ class ICs(QWidget):
         label.setAlignment(QtCore.Qt.AlignRight)
         hbox.addWidget(label)
 
-        self.csv_folder = QLineEdit("config")
-        rx_valid_varname = QtCore.QRegExp("^[a-zA-Z][a-zA-Z0-9_]+$")
-        name_validator = QtGui.QRegExpValidator(rx_valid_varname)
-        self.csv_folder.setValidator(name_validator)
+        self.csv_folder = QLineEdit()
+        # rx_valid_varname = QtCore.QRegExp("^[a-zA-Z][a-zA-Z0-9_]+$")
+        # name_validator = QtGui.QRegExpValidator(rx_valid_varname)
+        # self.csv_folder.setValidator(name_validator)
         # self.csv_folder.returnPressed.connect(self.csv_folder_cb)
         hbox.addWidget(self.csv_folder)
 
@@ -321,7 +321,7 @@ class ICs(QWidget):
         hbox.addWidget(label)
 
         self.output_file = QLineEdit("cells.csv")
-        self.output_file.setValidator(name_validator)
+        # self.output_file.setValidator(name_validator)
         hbox.addWidget(self.output_file)
         hbox.addStretch(1)  # not sure about this, but keeps buttons shoved to left
         self.vbox.addLayout(hbox)
