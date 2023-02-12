@@ -12,18 +12,28 @@ make
 
 # If you're in a Unix-based terminal/shell, move the executables into the root folder (rf. mv_all.sh bash script):
 
-mv biorobots ../bin
-mv celltypes ../bin
-mv pred_prey ../bin
-mv interactions ../bin
-# maybe others in the future
+mv biorobots ..
+mv celltypes ..
+mv pred_prey ..
+mv interactions ..
 
 # Change directory to the Studio's root dir and run it from there:
 cd ..
 python bin/pmb.py --studio
 ```
 
-Note: this repository has a directory structure and workflow that is amenable to nanoHUB.
+Note: this repository has a directory structure and workflow that is amenable to nanoHUB. To test as if on nanoHUB:
+```
+# If you're in a Unix-based terminal/shell, move the executables into the root folder (rf. mv_all.sh bash script):
+
+mv biorobots ../bin
+mv celltypes ../bin
+mv pred_prey ../bin
+mv interactions ../bin
+
+# Change directory to the Studio's root dir and run it from there using the additional arg:
+python bin/pmb.py --studio --nanohub
+```
 
 In the Studio:
 * select a model to test from the `Model` menu
