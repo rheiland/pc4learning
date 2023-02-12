@@ -1,25 +1,31 @@
 # pc4learning
 
-GUI to explore one of several PhysiCell sample models.
+Dependencies: Python distribution containing required modules for the Studio (rf. requirements.txt). We typically recommend users install the Anaconda Python distribution.
 
-Compile (all provided sample models), copy the executable(s) you want to run to the root directory, run the GUI:
+PhysiCell Studio application to explore one of several PhysiCell sample models.
+
+Compile a particular set of sample models. Move those executables to a specific directory where the Studio expects them. Run the Studio.
 ```
 cd pc4learning/src
 make
 
-# move the executables into the root folder
-mv biorobots ..
-mv celltypes ..
-mv pred_prey ..
-mv interactions ..
+# If you're in a Unix-based terminal/shell, move the executables into the root folder (rf. mv_all.sh bash script):
 
-# Change directory to the root dir and run the GUI from there
+mv biorobots ../bin
+mv celltypes ../bin
+mv pred_prey ../bin
+mv interactions ../bin
+# maybe others in the future
+
+# Change directory to the Studio's root dir and run it from there:
 cd ..
-python bin/studio.py
+python bin/pmb.py --studio
 ```
 
-In the GUI:
-* select the model to test from the `Model` menu
-* in the Run tab, click `Run Simulation`. Note: on nanoHUB, the simulation is run *from* the `tmpdir` directory and that's where all output files will be written.
+Note: this repository has a directory structure and workflow that is amenable to nanoHUB.
+
+In the Studio:
+* select a model to test from the `Model` menu
+* in the Run tab, click `Run Simulation`. (Note: on nanoHUB, the simulation is run *from* the `tmpdir` directory and that's where all output files will be written)
 * in the Plot tab, click `Play`.
-* edit params if you want then repeat: Run, Play.
+* edit model params in the Studio, re-Run, etc.
