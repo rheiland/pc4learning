@@ -6,34 +6,27 @@ Dependencies: g++ compiler that is recommended for building PhysiCell models. Py
 
 
 Compile a particular set of sample models. Move those executables to a specific directory where the Studio expects them. Run the Studio.
+
+Note: this repository has a directory structure and workflow that is amenable to nanoHUB.
+
 ```
 cd pc4learning/src
 make
 
-# If you're in a Unix-based terminal/shell, move the executables into the root folder (rf. mv_all.sh bash script):
-
-mv biorobots ..
-mv celltypes ..
-mv pred_prey ..
-mv interactions ..
-
-# Change directory to the Studio's root dir and run it from there:
-cd ..
-python bin/pmb.py --studio
-```
-
-Note: this repository has a directory structure and workflow that is amenable to nanoHUB. To test as if on nanoHUB:
-```
-# If you're in a Unix-based terminal/shell, move the executables into the root folder (rf. mv_all.sh bash script):
+# If you're in a Unix-based terminal/shell, move the executables into the directory where they are expected to be (rf. mv_all.sh bash script):
 
 mv biorobots ../bin
 mv celltypes ../bin
 mv pred_prey ../bin
 mv interactions ../bin
 
-# Change directory to the Studio's root dir and run it from there using the additional arg:
+(On Windows, the executables will have the ".exe" suffix)
+
+# Change directory to the Studio's root dir and run it from there using these command line arguments:
+cd ..
 python bin/pmb.py --studio --nanohub
 ```
+
 
 In the Studio:
 * select a model to test from the `Model` menu
