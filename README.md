@@ -1,8 +1,9 @@
 # pc4learning
 
-Dependencies: Python distribution containing required modules for the Studio (rf. requirements.txt). We typically recommend users install the Anaconda Python distribution.
-
 PhysiCell Studio application to explore one of several PhysiCell sample models.
+
+Dependencies: g++ compiler that is recommended for building PhysiCell models. Python distribution containing required modules for the Studio (rf. requirements.txt). We typically recommend users install the Anaconda Python distribution. Rf. https://github.com/physicell-training/ws2022/tree/main/setup
+
 
 Compile a particular set of sample models. Move those executables to a specific directory where the Studio expects them. Run the Studio.
 ```
