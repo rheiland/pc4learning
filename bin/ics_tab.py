@@ -88,7 +88,8 @@ class ICs(QWidget):
 
         self.show_plot_range = False
 
-        self.numcells_l = []
+        self.numcells_l = []    # list containing # of cells per "Plot" action
+        self.cell_radii = []   # master list for *all* cells' (radii) plotted in ICs
 
         self.x0_value = 0.
         self.y0_value = 0.
@@ -152,7 +153,7 @@ class ICs(QWidget):
         hbox.addWidget(label)
 
         self.celltype_combobox = QComboBox()
-        self.celltype_combobox.setFixedWidth(label_width)
+        self.celltype_combobox.setFixedWidth(200)  # how wide is sufficient?
         hbox.addWidget(self.celltype_combobox)
         hbox.addStretch(1)  # not sure about this, but keeps buttons shoved to left
         self.vbox.addLayout(hbox)
@@ -516,6 +517,8 @@ class ICs(QWidget):
         self.fill_celltype_combobox()
         self.csv_array = np.empty([1,4])
         self.csv_array = np.delete(self.csv_array,0,0)
+        self.numcells_l = []
+        self.cell_radii = []
 
         self.plot_xmin = float(self.config_tab.xmin.text())
         self.plot_xmax = float(self.config_tab.xmax.text())
@@ -651,7 +654,7 @@ class ICs(QWidget):
     #------------------------------------------------------------
     def plot_cb(self):
         self.reset_plot_range()
-        self.cells_radii = []
+        # self.cell_radii = []
 
         cdef = self.celltype_combobox.currentText()
         volume = float(self.celldef_tab.param_d[cdef]["volume_total"])
@@ -694,7 +697,7 @@ class ICs(QWidget):
         cell_colors = []
 
         # rvals = 8
-        rvals = self.cells_radii
+        rvals = self.cell_radii
 
         for idx in range(len(xvals)):
             cell_type = int(self.csv_array[idx,3])
@@ -764,7 +767,7 @@ class ICs(QWidget):
                 # self.csv_array = np.append(self.csv_array,[[xval,yval,zval, cell_type_index]],axis=0)
                 self.csv_array = np.append(self.csv_array,[[xval_offset,yval_offset,zval, cell_type_index]],axis=0)
                 rlist.append(rval)
-                self.cells_radii.append(self.cell_radius)
+                self.cell_radii.append(self.cell_radius)
                 count+=1
 
         self.numcells_l.append(count)
@@ -858,7 +861,7 @@ class ICs(QWidget):
                     # self.csv_array = np.append(self.csv_array,[[xval_offset,yval,zval, cell_type_index]],axis=0)
                     self.csv_array = np.append(self.csv_array,[[xval_offset,yval_offset,zval, cell_type_index]],axis=0)
                     rlist.append(rval)
-                    self.cells_radii.append(self.cell_radius)
+                    self.cell_radii.append(self.cell_radius)
                     count+=1
 
         self.numcells_l.append(count)
@@ -915,7 +918,7 @@ class ICs(QWidget):
             ylist.append(yval)
             self.csv_array = np.append(self.csv_array,[[xval,yval,zval, cell_type_index]],axis=0)
             rlist.append(rval)
-            self.cells_radii.append(self.cell_radius)
+            self.cell_radii.append(self.cell_radius)
             count+=1
             if count == ncells:
                 break
@@ -1008,7 +1011,7 @@ class ICs(QWidget):
                 rlist.append(rval)
                 # print(count,xval,yval)
                 self.csv_array = np.append(self.csv_array,[[xval,yval,zval, cell_type_index]],axis=0)
-                self.cells_radii.append(self.cell_radius)
+                self.cell_radii.append(self.cell_radius)
                 count+=1
                 if count == ncells:
                     break
@@ -1049,7 +1052,7 @@ class ICs(QWidget):
 
         self.csv_array = np.empty([1,4])  # should probably *just* np.delete, but meh
         self.csv_array = np.delete(self.csv_array,0,0)
-        self.cells_radii = []
+        self.cell_radii = []
 
     def save_cb(self):
         # print("\n------- ics_tab.py: save_cb() -------")
