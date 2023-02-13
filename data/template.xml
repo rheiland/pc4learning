@@ -220,7 +220,7 @@
 	<initial_conditions>
 		<cell_positions type="csv" enabled="false">
 			<folder />
-			<filename></filename>
+			<filename />
 		</cell_positions>
 	</initial_conditions>	
 	

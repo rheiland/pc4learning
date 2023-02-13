@@ -186,7 +186,7 @@ class PhysiCellXMLCreator(QWidget):
             self.config_tab.folder.setText('.')
             self.config_tab.folder.setEnabled(False)
             self.config_tab.csv_folder.setText('')
-            self.config_tab.csv_folder.setEnabled(False)
+            # self.config_tab.csv_folder.setEnabled(False)
             self.config_tab.folder.setText('.')
         else:
             print("pmb.py: ---- FALSE nanohub_flag: NOT updating config_tab folder")
@@ -371,7 +371,8 @@ class PhysiCellXMLCreator(QWidget):
             self.vis_tab.reset_model()
             
 
-        self.template_nanohub_cb()   # hack - default 'template' model
+        if not config_file:
+            self.template_nanohub_cb()   # hack - default 'template' model
 
         vlayout.addWidget(self.tabWidget)
         # self.addTab(self.sbml_tab,"SBML")

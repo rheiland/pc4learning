@@ -206,6 +206,7 @@ class RunModel(QWidget):
 
             else:
                 self.output_dir = self.config_tab.folder.text()
+                print(f'\nrun_tab.py: -- non-nanohub workflow: rm -rf output_dir={self.output_dir}')
                 os.system('rm -rf ' + self.output_dir)
                 logging.debug(f'run_tab.py:  doing: mkdir {self.output_dir}')
                 os.makedirs(self.output_dir)  # do 'mkdir output_dir'
