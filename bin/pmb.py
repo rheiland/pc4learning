@@ -127,6 +127,7 @@ class PhysiCellXMLCreator(QWidget):
         self.setMinimumSize(1100, 770)  #width, height of window
 
         self.current_dir = os.getcwd()
+        self.homedir = os.getcwd()
         print("self.current_dir = ",self.current_dir)
         logging.debug(f'self.current_dir = {self.current_dir}')
         self.pmb_root_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), '..'))
@@ -296,6 +297,7 @@ class PhysiCellXMLCreator(QWidget):
 
             self.run_tab = RunModel(self.nanohub_flag, self.tabWidget, self.rules_flag, self.download_menu)
             self.run_tab.actual_nanohub_flag = self.actual_nanohub_flag  # rwh: insane testing!
+            self.run_tab.homedir = self.homedir
 
             self.homedir = os.getcwd()
             print("pmb.py: self.homedir = ",self.homedir)

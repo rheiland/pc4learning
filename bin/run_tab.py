@@ -43,6 +43,7 @@ class RunModel(QWidget):
         # self.nanohub = True
         # following set in pmb.py
         self.current_dir = ''   
+        self.homedir = None
         self.config_file = None
         self.tree = None
 
@@ -174,74 +175,50 @@ class RunModel(QWidget):
 
         # if self.nanohub_flag: # copy normal workflow of an app, strange as it is
         if True: # copy normal workflow of an app, strange as it is
-            # make sure we are where we started (app's root dir)
-            # logging.debug(f'\n------>>>> doing os.chdir to {self.current_dir}')
-            print(f'\nrun_tab.py------>>>> doing os.chdir to {self.current_dir}')
-            os.chdir(self.current_dir)  # was "homedir"
+
+                    # make sure we are where we started (app's root dir)
+            print(f'\nrun_tab.py------>>>> doing os.chdir to {self.homedir}')
+            os.chdir(self.homedir)
+            # print(f'\nrun_tab.py------>>>> doing os.chdir to {self.current_dir}')
+            # os.chdir(self.current_dir)  # was "homedir"
+
             # remove any previous data
             # NOTE: this dir name needs to match the <folder>  in /data/<config_file.xml>
-            if self.nanohub_flag:
-                # print(f'\nrun_tab.py: -- nanohub workflow: chdir to {self.current_dir}')
-                print(f'\nrun_tab.py: -- nanohub workflow: rm -rf tmpdir*; mkdir tmpdir')
-                os.system('rm -rf tmpdir*')
-                time.sleep(1)
-                if os.path.isdir('tmpdir'):
-                    # something on NFS causing issues...
-                    tname = tempfile.mkdtemp(suffix='.bak', prefix='tmpdir_', dir='.')
-                    shutil.move('tmpdir', tname)
-                os.makedirs('tmpdir')
-                tdir = os.path.abspath('tmpdir')
-                print(f'\nrun_tab.py: -- nanohub workflow: chdir to {tdir}')
-                os.chdir(tdir)   # run exec from here on nanoHUB
-                self.legend_tab.output_dir = tdir
+            os.system('rm -rf tmpdir*')
+            time.sleep(1)
+            if os.path.isdir('tmpdir'):
+                # something on NFS causing issues...
+                tname = tempfile.mkdtemp(suffix='.bak', prefix='tmpdir_', dir='.')
+                shutil.move('tmpdir', tname)
+            os.makedirs('tmpdir')
 
-                # new_config_file = Path(tdir,"config.xml")
-                # self.celldef_tab.config_path = new_config_file  # ??
-                self.celldef_tab.config_path = self.config_file
+            # write the default config file to tmpdir
+            # new_config_file = "tmpdir/config.xml"  # use Path; work on Windows?
+            tdir = os.path.abspath('tmpdir')
+            new_config_file = Path(tdir,"config.xml")
 
-                self.update_xml_from_gui()
-                # self.tree.write(new_config_file)  # saves modified XML to <output_dir>/config.xml 
-                self.tree.write(self.config_file)
-                shutil.copy(self.config_file, "config.xml")
+            # write_config_file(new_config_file)  
+            # update the .xml config file
+            self.update_xml_from_gui()
 
-            else:
-                self.output_dir = self.config_tab.folder.text()
-                print(f'\nrun_tab.py: -- non-nanohub workflow: rm -rf output_dir={self.output_dir}')
-                os.system('rm -rf ' + self.output_dir)
-                logging.debug(f'run_tab.py:  doing: mkdir {self.output_dir}')
-                os.makedirs(self.output_dir)  # do 'mkdir output_dir'
-                time.sleep(1)
-                tdir = os.path.abspath(self.output_dir)
-
-                self.update_xml_from_gui()
-                self.tree.write(self.config_file)
-                shutil.copy(self.config_file, "config.xml")
-
-
-
-
-            # logging.debug(f'run_tab.py: ----> writing modified model to {self.config_file}')
-            # print("run_tab.py: ----> writing modified model to ",new_config_file)
-            # self.tree.write(self.config_file)
-            # self.tree.write(new_config_file)  # saves modified XML to <output_dir>/config.xml 
-            # sys.exit(1)
+            # self.config_tab.fill_xml()
+            # self.microenv_tab.fill_xml()
+            # self.celldef_tab.fill_xml()
+            # self.user_params_tab.fill_xml()
+            print("\n\n ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+            print("run_tab.py: ----> writing modified model to ",new_config_file)
+            self.tree.write(new_config_file)  # saves modified XML to tmpdir/config.xml 
 
             # Operate from tmpdir. XML: <folder>,</folder>; temporary output goes here.  May be copied to cache later.
-            # if self.nanohub_flag:
-            #     tdir = os.path.abspath('tmpdir')
-            #     os.chdir(tdir)   # run exec from here on nanoHUB
-            # sub.update(tdir)
-            # subprocess.Popen(["../bin/myproj", "config.xml"])
+            tdir = os.path.abspath('tmpdir')
+            os.chdir(tdir)   # run exec from here on nanoHUB
 
-
-        auto_load_params = True
-        # if auto_load_params:
 
         if self.vis_tab:
             # self.vis_tab.reset_axes()
             self.vis_tab.reset_model_flag = True
-            self.vis_tab.reset_plot_range()
-            self.vis_tab.init_plot_range(self.config_tab) # heaven help the person who needs to understand this
+            # self.vis_tab.reset_plot_range()
+            # self.vis_tab.init_plot_range(self.config_tab) # heaven help the person who needs to understand this
 
 
         if self.p is None:  # No process running.
