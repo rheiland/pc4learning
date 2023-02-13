@@ -245,7 +245,8 @@ class RunModel(QWidget):
                 # self.p.start(exec_str, ["output/config.xml"])
             # self.p = None  # No, don't do this
 
-            self.legend_tab.reload_legend()  # new, not sure about timing - creation vs. display
+            if not self.actual_nanohub_flag:
+                self.legend_tab.reload_legend()  # rwh: new, not sure about timing - creation vs. display
         else:
             # logging.debug(f'self.p is not None???')
             print(f'self.p is not None???')
