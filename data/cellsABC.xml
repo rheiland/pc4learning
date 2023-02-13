@@ -13,7 +13,7 @@
 	</domain>
 	
 	<overall>
-		<max_time units="min">600</max_time> 
+		<max_time units="min">900</max_time> 
 		<time_units>min</time_units>
 		<space_units>micron</space_units>
 	
@@ -27,7 +27,7 @@
 	</parallel> 
 	
 	<save>
-		<folder>tmpdir</folder>  
+		<folder>.</folder>  
 
 		<full_data>
 			<interval units="min">20</interval>
@@ -103,7 +103,7 @@
         <phenotype>
           <cycle code="5" name="live">
             <phase_transition_rates units="1/min">
-              <rate start_index="0" end_index="0" fixed_duration="true">1.e-99</rate>
+              <rate start_index="0" end_index="0" fixed_duration="false">0</rate>
             </phase_transition_rates>
             </cycle>
 
@@ -250,7 +250,7 @@
         <phenotype>
           <cycle code="5" name="live">
             <phase_transition_rates units="1/min">
-              <rate start_index="0" end_index="0" fixed_duration="true">1.e-99</rate>
+              <rate start_index="0" end_index="0" fixed_duration="false">0</rate>
             </phase_transition_rates>
             </cycle>
 
@@ -397,7 +397,7 @@
         <phenotype>
           <cycle code="5" name="live">
             <phase_transition_rates units="1/min">
-              <rate start_index="0" end_index="0" fixed_duration="true">1.e-99</rate>
+              <rate start_index="0" end_index="0" fixed_duration="false">0</rate>
             </phase_transition_rates>
             </cycle>
 
@@ -468,7 +468,7 @@
           <motility>
             <speed units="micron/min">1</speed>
             <persistence_time units="min">1</persistence_time>
-            <migration_bias units="dimensionless">1</migration_bias>
+            <migration_bias units="dimensionless">0.5</migration_bias>
             <options>
               <enabled>true</enabled>
               <use_2D>true</use_2D>
@@ -544,7 +544,7 @@
 	
 	<initial_conditions>
 		<cell_positions type="csv" enabled="true">
-			<folder>data</folder>
+			<folder>../data</folder>
 			<filename>cellsABC.csv</filename>
 		</cell_positions>
 	</initial_conditions>	
