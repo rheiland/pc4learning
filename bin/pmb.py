@@ -373,8 +373,8 @@ class PhysiCellXMLCreator(QWidget):
                 self.vis_tab.update_output_dir(self.config_tab.folder.text())
                 self.legend_tab.output_dir = self.config_tab.folder.text()
             legend_file = os.path.join(self.vis_tab.output_dir, 'legend.svg')  # hardcoded filename :(
-            if Path(legend_file).is_file():
-                self.legend_tab.reload_legend()
+            # if Path(legend_file).is_file():
+            #     self.legend_tab.reload_legend()
 
             self.vis_tab.reset_model()
             
@@ -919,11 +919,12 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
             # self.vis_tab.output_dir = dir_path
             self.vis_tab.update_output_dir(dir_path)
             self.legend_tab.output_dir = dir_path
-            legend_file = os.path.join(self.vis_tab.output_dir, 'legend.svg')  # hardcoded filename :(
-            if Path(legend_file).is_file():
-                self.legend_tab.reload_legend()
-            else:
-                self.legend_tab.clear_legend()
+
+            # legend_file = os.path.join(self.vis_tab.output_dir, 'legend.svg')  # hardcoded filename :(
+            # if Path(legend_file).is_file():
+            #     self.legend_tab.reload_legend()
+            # else:
+            #     self.legend_tab.clear_legend()
 
             self.vis_tab.reset_model()
             self.vis_tab.update_plots()
