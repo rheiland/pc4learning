@@ -185,8 +185,8 @@ class PhysiCellXMLCreator(QWidget):
         if self.nanohub_flag:  # rwh - test if works on nanoHUB
             print("pmb.py: ---- TRUE nanohub_flag: updating config_tab folder")
             self.config_tab.folder.setText('.')
-            self.config_tab.folder.setEnabled(False)
-            self.config_tab.csv_folder.setText('')
+            # self.config_tab.folder.setEnabled(False)
+            # self.config_tab.csv_folder.setText('')
             # self.config_tab.csv_folder.setEnabled(False)
             self.config_tab.folder.setText('.')
         else:
@@ -284,12 +284,17 @@ class PhysiCellXMLCreator(QWidget):
             self.ics_tab.fill_celltype_combobox()
             self.ics_tab.reset_info()
 
+            # if self.actual_nanohub_flag:  # rwh - test if works on nanoHUB
             if self.nanohub_flag:  # rwh - test if works on nanoHUB
-                print("pmb.py: ---- TRUE nanohub_flag: updating ics_tab folder")
-                self.ics_tab.csv_folder.setText('')
-                self.ics_tab.csv_folder.setEnabled(False)
+                print("pmb.py: ---- l.289: updating ics_tab csv_folder=",self.pmb_data_dir)
+                self.ics_tab.csv_folder.setText(self.pmb_data_dir)
+                # self.ics_tab.file.setText("cells.csv")
+                # self.config_tab.csv_folder.setText(self.pmb_data_dir)
+                # self.ics_tab.csv_folder.setEnabled(False)
             else:
                 print("pmb.py: ---- FALSE nanohub_flag: NOT updating ics_tab folder")
+                # self.ics_tab.csv_folder.setText('config')
+                # self.config_tab.csv_folder.setText('config')
 
             self.celldef_tab.ics_tab = self.ics_tab
             # self.rules_tab.fill_gui()
@@ -343,7 +348,8 @@ class PhysiCellXMLCreator(QWidget):
             self.legend_tab.pmb_data_dir = self.pmb_data_dir
             self.run_tab.vis_tab = self.vis_tab
             if self.nanohub_flag:  # rwh - test if works on nanoHUB
-                self.legend_tab.output_dir = 'tmpdir'
+                # self.legend_tab.output_dir = 'tmpdir'
+                self.legend_tab.output_dir = '.'
             # self.vis_tab.setEnabled(False)
             # self.vis_tab.nanohub_flag = self.nanohub_flag
             # self.vis_tab.xml_root = self.xml_root
@@ -372,6 +378,10 @@ class PhysiCellXMLCreator(QWidget):
 
             self.vis_tab.reset_model()
             
+        if self.nanohub_flag:  # rwh - test if works on nanoHUB
+            print("pmb.py: ---- nanohub_flag: updating ics_tab csv_folder = ",self.pmb_data_dir)
+            self.config_tab.csv_folder.setText(self.pmb_data_dir)
+            self.config_tab.csv_file.setText("cells.csv")
 
         if not config_file:
             self.template_nanohub_cb()   # hack - default 'template' model

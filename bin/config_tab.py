@@ -332,9 +332,9 @@ class Config(QWidget):
         icol += 1
         self.config_tab_layout.addWidget(label, idx_row,icol,1,1) # w, row, column, rowspan, colspan
 
-        self.csv_folder = QLineEdit()
-        if self.nanohub_flag:
-            self.folder.setEnabled(False)
+        self.csv_folder = QLineEdit("foofolder")
+        # if self.nanohub_flag:
+        #     self.csv_folder.setEnabled(False)
         icol += 1
         self.config_tab_layout.addWidget(self.csv_folder, idx_row,icol,1,1) # w, row, column, rowspan, colspan
 
@@ -429,8 +429,19 @@ class Config(QWidget):
         uep = self.xml_root.find(".//initial_conditions//cell_positions")
         if uep == None:  # not present
             return
-        self.csv_folder.setText(self.xml_root.find(".//initial_conditions//cell_positions//folder").text)
-        self.csv_file.setText(self.xml_root.find(".//initial_conditions//cell_positions//filename").text)
+        print("--- config_tab.py: fill_gui(): self.csv_folder.setText= ../data")
+        folder_str = self.xml_root.find(".//initial_conditions//cell_positions//folder").text
+        if folder_str:
+            print("-- config_tab.py: csv folder_str=",folder_str)
+            self.csv_folder.setText(folder_str)
+
+        file_str = self.xml_root.find(".//initial_conditions//cell_positions//filename").text
+        if file_str:
+            self.csv_file.setText(file_str)
+        # if self.nanohub_flag:
+        #     print("--- config_tab.py: fill_gui(): self.csv_folder.setText= ../data")
+        #     self.csv_folder.setText('../data')
+
         if uep.attrib['enabled'].lower() == 'true':
             self.cells_csv.setChecked(True)
         else:
