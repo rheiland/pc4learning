@@ -372,7 +372,7 @@ class PhysiCellXMLCreator(QWidget):
             if not self.nanohub_flag:
                 self.vis_tab.update_output_dir(self.config_tab.folder.text())
                 self.legend_tab.output_dir = self.config_tab.folder.text()
-            legend_file = os.path.join(self.vis_tab.output_dir, 'legend.svg')  # hardcoded filename :(
+            # legend_file = os.path.join(self.vis_tab.output_dir, 'legend.svg')  # hardcoded filename :(
             # if Path(legend_file).is_file():
             #     self.legend_tab.reload_legend()
 

@@ -80,11 +80,12 @@ class Legend(QWidget):
         self.layout.addWidget(self.scroll)
 
     def clear_legend(self):
+        return
         legend_file = os.path.join(self.pmb_data_dir, 'empty_legend.svg')
         self.svgView.load(legend_file)
 
     def reload_legend(self):
-        # return  # rwh: testing for nanoHUB!
+        return  # rwh: testing for nanoHUB!
 
         # print('reload_legend(): cwd = self.output_dir = ',os.getcwd())
         # self.output_dir = os.getcwd()
@@ -100,13 +101,13 @@ class Legend(QWidget):
 
             path = Path(self.output_dir,"legend.svg")
             # path = Path(self.current_dir,self.output_dir,"legend.svg")
-            print("path = ",path)
+            print("legend_tab.py: reload_legend(): path = ",path)
             if path.is_file():
             # try:
                 # self.svgView.load("legend.svg")
                 full_fname = os.path.join(self.output_dir, "legend.svg")
                 # full_fname = os.path.join(self.current_dir,self.output_dir, "legend.svg")
-                print("legend_tab.py: full_fname = ",full_fname)
+                print("legend_tab.py: reload_legend(): full_fname = ",full_fname)
                 self.svgView.load(full_fname)
                 break
             # except:
