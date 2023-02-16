@@ -42,6 +42,7 @@ class Legend(QWidget):
         self.current_dir = '.'   # reset in pmb.py
         self.pmb_data_dir = ''   # reset in pmb.py
         self.nanohub_flag = nanohub_flag
+        self.actual_nanohub_flag = False
         
         #-------------------------------------------
         self.scroll = QScrollArea()  # might contain centralWidget
@@ -85,7 +86,7 @@ class Legend(QWidget):
         self.svgView.load(legend_file)
 
     def reload_legend(self):
-        return  # rwh: testing for nanoHUB!
+        # return  # rwh: testing for nanoHUB!
 
         # print('reload_legend(): cwd = self.output_dir = ',os.getcwd())
         # self.output_dir = os.getcwd()
@@ -99,6 +100,10 @@ class Legend(QWidget):
             # else:
             #     path = Path(self.output_dir,"legend.svg")
 
+            # if self.actual_nanohub_flag:
+
+            # else:
+            # on nanoHUB, output_dir had better be "."  (i.e., in /tmpdir)
             path = Path(self.output_dir,"legend.svg")
             # path = Path(self.current_dir,self.output_dir,"legend.svg")
             print("legend_tab.py: reload_legend(): path = ",path)

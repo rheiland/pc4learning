@@ -343,7 +343,8 @@ class PhysiCellXMLCreator(QWidget):
             self.config_tab.vis_tab = self.vis_tab
             # self.vis_tab.output_dir = self.config_tab.folder.text()
             if self.nanohub_flag:  # rwh - test if works on nanoHUB
-                self.vis_tab.output_folder_w.setText('tmpdir')
+                # self.vis_tab.output_folder_w.setText('tmpdir')
+                self.vis_tab.output_folder_w.setText('.')
                 self.vis_tab.output_folder_w.setEnabled(False)
                 # self.legend_tab.output_dir = 'tmpdir'
             else:
@@ -356,6 +357,7 @@ class PhysiCellXMLCreator(QWidget):
             self.legend_tab = Legend(self.nanohub_flag)
             self.legend_tab.current_dir = self.current_dir
             self.legend_tab.pmb_data_dir = self.pmb_data_dir
+            self.legend_tab.actual_nanohub_flag = self.actual_nanohub_flag
             self.run_tab.vis_tab = self.vis_tab
             if self.nanohub_flag:  # rwh - test if works on nanoHUB
                 # self.legend_tab.output_dir = 'tmpdir'
