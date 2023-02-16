@@ -31,6 +31,7 @@ from PyQt5.QtGui import QPalette, QColor, QIcon, QFont
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QStyleFactory
 
+from about_tab import About
 from config_tab import Config
 from cell_def_tab import CellDef 
 from microenv_tab import SubstrateDef 
@@ -132,12 +133,16 @@ class PhysiCellXMLCreator(QWidget):
         logging.debug(f'self.current_dir = {self.current_dir}')
         self.pmb_root_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), '..'))
         self.pmb_data_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'data'))
+        self.pmb_doc_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'doc'))
         print("self.pmb_data_dir = ",self.pmb_data_dir)
         print("self.pmb_root_dir = ",self.pmb_root_dir)
         logging.debug(f'self.pmb_root_dir = {self.pmb_root_dir}')
 
         self.absolute_data_dir = os.path.abspath(self.pmb_data_dir)
         print("-------- absolute_data_dir =",self.absolute_data_dir)
+
+        self.absolute_doc_dir = os.path.abspath(self.pmb_doc_dir)
+        print("-------- absolute_doc_dir =",self.absolute_doc_dir)
 
         # assume running from a PhysiCell root dir, but change if not
         self.config_dir = os.path.realpath(os.path.join('.', 'config'))
@@ -261,6 +266,9 @@ class PhysiCellXMLCreator(QWidget):
             """
 
         self.tabWidget.setStyleSheet(stylesheet)
+        if self.studio_flag:
+            self.about_tab = About(self.absolute_doc_dir)
+            self.tabWidget.addTab(self.about_tab,"About")
         self.tabWidget.addTab(self.config_tab,"Config Basics")
         self.tabWidget.addTab(self.microenv_tab,"Microenvironment")
         self.tabWidget.addTab(self.celldef_tab,"Cell Types")
@@ -279,7 +287,8 @@ class PhysiCellXMLCreator(QWidget):
 
 
         if self.studio_flag:
-            logging.debug(f'pmb.py: creating ICs, Run, and Plot tabs')
+            self.ics_tab = ICs(self.config_tab, self.celldef_tab)
+            # logging.debug(f'pmb.py: creating ICs, Run, and Plot tabs')
             self.ics_tab = ICs(self.config_tab, self.celldef_tab)
             self.ics_tab.fill_celltype_combobox()
             self.ics_tab.reset_info()
@@ -299,6 +308,7 @@ class PhysiCellXMLCreator(QWidget):
             self.celldef_tab.ics_tab = self.ics_tab
             # self.rules_tab.fill_gui()
             self.tabWidget.addTab(self.ics_tab,"ICs")
+
 
             self.run_tab = RunModel(self.nanohub_flag, self.tabWidget, self.rules_flag, self.download_menu)
             self.run_tab.actual_nanohub_flag = self.actual_nanohub_flag  # rwh: insane testing!
@@ -1451,6 +1461,6 @@ if __name__ == '__main__':
     # logging.basicConfig(filename='pmb.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s')
     # logging.basicConfig(filename="pmb_debug.log", level=logging.INFO)
     logfile = "pmb_debug.log"
-    logging.basicConfig(filename=logfile, level=logging.DEBUG, filemode='w',)
+    # logging.basicConfig(filename=logfile, level=logging.DEBUG, filemode='w',)
     # logging.basicConfig(filename=logfile, level=logging.ERROR, filemode='w',)
     main()
