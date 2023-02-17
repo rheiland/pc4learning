@@ -305,6 +305,8 @@ class ICs(QWidget):
         self.vbox.addWidget(QHLine())
 
         self.save_button = QPushButton("Save")
+        if self.nanohub_flag:
+            self.save_button.setEnabled(False)
         self.save_button.setFixedWidth(btn_width)
         self.save_button.setStyleSheet("background-color: lightgreen")
         # self.plot_button.clicked.connect(self.uniform_random_pts_annulus_cb)

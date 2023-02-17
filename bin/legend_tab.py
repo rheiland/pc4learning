@@ -102,26 +102,34 @@ class Legend(QWidget):
 
             # if self.actual_nanohub_flag:
 
-            # else:
-            # on nanoHUB, output_dir had better be "."  (i.e., in /tmpdir)
-            path = Path(self.output_dir,"legend.svg")
-            # path = Path(self.current_dir,self.output_dir,"legend.svg")
-            print("legend_tab.py: reload_legend(): path = ",path)
-            if path.is_file():
-            # try:
-                # self.svgView.load("legend.svg")
+            if self.nanohub_flag:
+                # on nanoHUB, output_dir had better be "."  (i.e., in /tmpdir)
                 full_fname = os.path.join(self.output_dir, "legend.svg")
-                # full_fname = os.path.join(self.current_dir,self.output_dir, "legend.svg")
-                print("legend_tab.py: reload_legend(): full_fname = ",full_fname)
-                self.svgView.load(full_fname)
-                break
-            # except:
-            #     path = Path(self.current_dir,self.output_dir,"legend.svg")
-            #     time.sleep(1)
+                if os.path.isfile(full_fname):
+                    self.svgView.load(full_fname)
+                    break
+                else:
+                    time.sleep(1)
+
             else:
                 path = Path(self.output_dir,"legend.svg")
                 # path = Path(self.current_dir,self.output_dir,"legend.svg")
-                time.sleep(1)
+                print("legend_tab.py: reload_legend(): path = ",path)
+                if path.is_file():
+                # try:
+                    # self.svgView.load("legend.svg")
+                    full_fname = os.path.join(self.output_dir, "legend.svg")
+                    # full_fname = os.path.join(self.current_dir,self.output_dir, "legend.svg")
+                    print("legend_tab.py: reload_legend(): full_fname = ",full_fname)
+                    self.svgView.load(full_fname)
+                    break
+                # except:
+                #     path = Path(self.current_dir,self.output_dir,"legend.svg")
+                #     time.sleep(1)
+                else:
+                    path = Path(self.output_dir,"legend.svg")
+                    # path = Path(self.current_dir,self.output_dir,"legend.svg")
+                    time.sleep(1)
         # try:
         #     self.svg.load("legend.svg")
         # except:
