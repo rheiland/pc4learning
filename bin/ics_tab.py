@@ -51,7 +51,7 @@ class QHLine(QFrame):
 
 class ICs(QWidget):
 
-    def __init__(self, config_tab, celldef_tab):
+    def __init__(self, config_tab, celldef_tab, nanohub_flag):
         super().__init__()
         # global self.config_params
 
@@ -74,7 +74,7 @@ class ICs(QWidget):
         self.plot_ymin = -500
         self.plot_ymax = 500
 
-        # self.nanohub_flag = nanohub_flag
+        self.nanohub_flag = nanohub_flag
 
         self.bgcolor = [1,1,1,1]  # all 1.0 for white 
 

@@ -41,6 +41,7 @@ from ics_tab import ICs
 from populate_tree_cell_defs import populate_tree_cell_defs
 from run_tab import RunModel 
 from legend_tab import Legend 
+from debug_tab import Debug 
 
 try:
     from simulariumio import UnitData, MetaData, DisplayData, DISPLAY_TYPE, ModelMetaData
@@ -75,7 +76,7 @@ def quit_cb():
 
   
 class PhysiCellXMLCreator(QWidget):
-    def __init__(self, config_file, studio_flag, skip_validate_flag, rules_flag, model3D_flag, exec_file, nanohub_flag, parent = None):
+    def __init__(self, config_file, studio_flag, skip_validate_flag, rules_flag, model3D_flag, exec_file, nanohub_flag, debug_flag, parent = None):
         super(PhysiCellXMLCreator, self).__init__(parent)
         if model3D_flag:
             from vis3D_tab import Vis 
@@ -88,6 +89,7 @@ class PhysiCellXMLCreator(QWidget):
         self.rules_flag = rules_flag 
         self.model3D_flag = model3D_flag 
         self.nanohub_flag = nanohub_flag 
+        self.debug_flag = debug_flag 
         self.actual_nanohub_flag = False
         print("PhysiCellXMLCreator(): self.nanohub_flag= ",self.nanohub_flag)
 
@@ -287,9 +289,8 @@ class PhysiCellXMLCreator(QWidget):
 
 
         if self.studio_flag:
-            self.ics_tab = ICs(self.config_tab, self.celldef_tab)
+            self.ics_tab = ICs(self.config_tab, self.celldef_tab, self.nanohub_flag)
             # logging.debug(f'pmb.py: creating ICs, Run, and Plot tabs')
-            self.ics_tab = ICs(self.config_tab, self.celldef_tab)
             self.ics_tab.fill_celltype_combobox()
             self.ics_tab.reset_info()
 
@@ -379,6 +380,10 @@ class PhysiCellXMLCreator(QWidget):
             self.vis_tab.fill_substrates_combobox(self.celldef_tab.substrate_list)
             # self.vis_tab.substrates_cbox_changed_cb(2)   # doesn't accomplish it; need to set index, but not sure when
             self.vis_tab.init_plot_range(self.config_tab)
+
+            if self.debug_flag:
+                self.debug_tab = Debug()
+                self.tabWidget.addTab(self.debug_tab,"Debug")
 
             # self.vis_tab.output_dir = self.config_tab.folder.text()
             if not self.nanohub_flag:
@@ -1336,6 +1341,7 @@ def main():
     rules_flag = False
     skip_validate_flag = False
     nanohub_flag = False
+    debug_flag = False
     try:
         parser = argparse.ArgumentParser(description='PhysiCell Model Builder (and optional Studio).')
 
@@ -1344,6 +1350,7 @@ def main():
         # parser.add_argument("-r", "--rules", "--Rules", help="display Rules tab" , action="store_true")
         parser.add_argument("-x", "--skip_validate", help="do not attempt to validate the config (.xml) file" , action="store_true")
         parser.add_argument("--nanohub", help="run as if on nanoHUB", action="store_true")
+        parser.add_argument("--debug", help="debug insane nanoHUB", action="store_true")
         parser.add_argument("-c", "--config", type=str, help="config file (.xml)")
         parser.add_argument("-e", "--exec", type=str, help="executable model")
 
@@ -1369,6 +1376,10 @@ def main():
         if args.nanohub:
             logging.debug(f'pmb.py: nanoHUB mode')
             nanohub_flag = True
+        if args.debug:
+            logging.debug(f'pmb.py: Studio mode: Run,Plot,Legend tabs')
+            debug_flag = True
+            # print("done with args.studio")
         if args.skip_validate:
             logging.debug(f'pmb.py: Do not validate the config file (.xml)')
             skip_validate_flag = True
@@ -1453,7 +1464,7 @@ def main():
     # pmb_app.setPalette(QtGui.QGuiApplication.palette())
 
     rules_flag = False
-    ex = PhysiCellXMLCreator(config_file, studio_flag, skip_validate_flag, rules_flag, model3D_flag, exec_file, nanohub_flag)
+    ex = PhysiCellXMLCreator(config_file, studio_flag, skip_validate_flag, rules_flag, model3D_flag, exec_file, nanohub_flag, debug_flag)
     ex.show()
     # startup_notice()
     sys.exit(pmb_app.exec_())
