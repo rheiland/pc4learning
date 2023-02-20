@@ -90,6 +90,7 @@ class Vis(QWidget):
         self.plot_cells_svg = True
         # self.plot_svg_flag = False
         self.field_index = 4  # substrate (0th -> 4 in the .mat)
+        self.substrate_name = None
         self.plot_xmin = None
         self.plot_xmax = None
         self.plot_ymin = None
@@ -411,10 +412,10 @@ class Vis(QWidget):
         label.setAlignment(QtCore.Qt.AlignRight)
         hbox.addWidget(label)
 
-        # self.output_folder_w = QLineEdit(self.output_dir)
-        self.output_folder_w = QLineEdit()
-        self.output_folder_w.returnPressed.connect(self.output_folder_w_cb)
-        hbox.addWidget(self.output_folder_w)
+        # self.output_folder = QLineEdit(self.output_dir)
+        self.output_folder = QLineEdit()
+        self.output_folder.returnPressed.connect(self.output_folder_cb)
+        hbox.addWidget(self.output_folder)
         hbox.addStretch(1)  # not sure about this, but keeps buttons shoved to left
         self.vbox.addLayout(hbox)
 
@@ -548,10 +549,10 @@ class Vis(QWidget):
 
         # self.create_figure()
 
-    def output_folder_w_cb(self):
-        print(f"vis_tab.py: output_folder_w_cb(): old={self.output_dir}")
-        self.output_dir = self.output_folder_w.text()
-        print(f"                    new={self.output_dir}")
+    def output_folder_cb(self):
+        # print(f"output_folder_cb(): old={self.output_dir}")
+        self.output_dir = self.output_folder.text()
+        # print(f"                    new={self.output_dir}")
 
     def cells_svg_mat_cb(self):
         radioBtn = self.sender()
@@ -575,12 +576,11 @@ class Vis(QWidget):
 
     def update_output_dir(self, dir_path):
         if os.path.isdir(dir_path):
-            print("vis_tab.py: update_output_dir(): yes, it is a dir path", dir_path)
+            print("update_output_dir(): yes, it is a dir path", dir_path)
         else:
-            print("vis_tab.py: update_output_dir(): NO, it is NOT a dir path", dir_path)
+            print("update_output_dir(): NO, it is NOT a dir path", dir_path)
         self.output_dir = dir_path
-        print(f"vis_tab.py: update_output_dir(): --> {self.output_dir}")
-        self.output_folder_w.setText(dir_path)
+        self.output_folder.setText(dir_path)
 
     def reset_plot_range(self):
         try:  # due to the initial callback
@@ -714,6 +714,7 @@ class Vis(QWidget):
     def substrates_combobox_changed_cb(self,idx):
         # print("----- vis_tab.py: substrates_combobox_changed_cb: idx = ",idx)
         self.field_index = 4 + idx # substrate (0th -> 4 in the .mat)
+        self.substrate_name = self.substrates_combobox.currentText()
         # print("\n>>> calling update_plots() from "+ inspect.stack()[0][3])
         self.update_plots()
 
@@ -731,7 +732,7 @@ class Vis(QWidget):
         self.reset_model()
 
     def reset_model(self):
-        print("\n--------- vis_tab: reset_model ----------")
+        # print("\n--------- vis_tab: reset_model ----------")
         # Verify initial.xml and at least one .svg file exist. Obtain bounds from initial.xml
         # tree = ET.parse(self.output_dir + "/" + "initial.xml")
         xml_file = Path(self.output_dir, "initial.xml")
@@ -1411,7 +1412,7 @@ class Vis(QWidget):
         try:
             tree = ET.parse(full_fname)
         except:
-            print("------ plot_svg(): error trying to parse ",full_fname)
+            print("------ plot_svg(): error trying to parse ",full_name)
             return
         root = tree.getroot()
         #  print('--- root.tag ---')
@@ -1859,6 +1860,7 @@ class Vis(QWidget):
             self.cbar1.ax.tick_params(labelsize=self.fontsize)
             # print("(init substrate) self.figure.axes= ",self.figure.axes)
 
+        self.cbar1.set_label(self.substrate_name)
         self.ax0.set_title(self.title_str, fontsize=self.title_fontsize)
         self.ax0.set_xlim(self.plot_xmin, self.plot_xmax)
         self.ax0.set_ylim(self.plot_ymin, self.plot_ymax)
