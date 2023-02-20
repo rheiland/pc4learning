@@ -208,6 +208,9 @@ class RunModel(QWidget):
             # self.user_params_tab.fill_xml()
             print("\n\n ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
             print("run_tab.py: ----> writing modified model to ",new_config_file)
+
+            # NOTE! We cannot write/update the original data/*.xml because nanoHUB mounts 
+            # that dir (all dirs) as READONLY!!!
             self.tree.write(new_config_file)  # saves modified XML to tmpdir/config.xml 
 
             # Operate from tmpdir. XML: <folder>,</folder>; temporary output goes here.  May be copied to cache later.
