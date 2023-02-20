@@ -360,6 +360,7 @@ class PhysiCellXMLCreator(QWidget):
             self.legend_tab.pmb_data_dir = self.pmb_data_dir
             self.legend_tab.actual_nanohub_flag = self.actual_nanohub_flag
             self.run_tab.vis_tab = self.vis_tab
+            self.run_tab.legend_tab = self.legend_tab
             if self.nanohub_flag:  # rwh - test if works on nanoHUB
                 # self.legend_tab.output_dir = 'tmpdir'
                 self.legend_tab.output_dir = '.'
@@ -374,9 +375,9 @@ class PhysiCellXMLCreator(QWidget):
             self.tabWidget.addTab(self.legend_tab,"Legend")
             self.enableLegendTab(False)
             self.enableLegendTab(True)
-            self.run_tab.vis_tab = self.vis_tab
-            self.run_tab.legend_tab = self.legend_tab
-            logging.debug(f'pmb.py: calling vis_tab.substrates_cbox_changed_cb(2)')
+            # self.run_tab.vis_tab = self.vis_tab
+            # self.run_tab.legend_tab = self.legend_tab
+            # logging.debug(f'pmb.py: calling vis_tab.substrates_cbox_changed_cb(2)')
             self.vis_tab.fill_substrates_combobox(self.celldef_tab.substrate_list)
             # self.vis_tab.substrates_cbox_changed_cb(2)   # doesn't accomplish it; need to set index, but not sure when
             self.vis_tab.init_plot_range(self.config_tab)
@@ -384,6 +385,8 @@ class PhysiCellXMLCreator(QWidget):
             if self.debug_flag:
                 self.debug_tab = Debug()
                 self.tabWidget.addTab(self.debug_tab,"Debug")
+                self.run_tab.debug_tab = self.debug_tab
+                self.legend_tab.debug_tab = self.debug_tab
 
             # self.vis_tab.output_dir = self.config_tab.folder.text()
             if not self.nanohub_flag:

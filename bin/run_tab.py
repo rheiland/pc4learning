@@ -248,7 +248,9 @@ class RunModel(QWidget):
 
             # if not self.actual_nanohub_flag:
             #     self.legend_tab.reload_legend()  # rwh: new, not sure about timing - creation vs. display
+            self.debug_tab.add_msg("run_tab: calling reload_legend()")
             self.legend_tab.reload_legend()  # rwh: new, not sure about timing - creation vs. display
+            self.debug_tab.add_msg("run_tab: back from reload_legend()")
         else:
             # logging.debug(f'self.p is not None???')
             print(f'self.p is not None???')

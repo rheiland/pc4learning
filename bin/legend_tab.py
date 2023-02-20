@@ -43,6 +43,7 @@ class Legend(QWidget):
         self.pmb_data_dir = ''   # reset in pmb.py
         self.nanohub_flag = nanohub_flag
         self.actual_nanohub_flag = False
+        self.debug_tab = None
         
         #-------------------------------------------
         self.scroll = QScrollArea()  # might contain centralWidget
@@ -91,9 +92,11 @@ class Legend(QWidget):
         # print('reload_legend(): cwd = self.output_dir = ',os.getcwd())
         # self.output_dir = os.getcwd()
         print('reload_legend(): self.output_dir = ',self.output_dir)
+        self.debug_tab.add_msg('reload_legend(): self.output_dir = '+self.output_dir)
 
         for idx in range(4):
             print("waiting for creation of legend.svg ...",idx)
+            self.debug_tab.add_msg("waiting for creation of legend.svg ..." + str(idx))
             # path = Path("legend.svg")
             # if self.nanohub_flag:
             #     path = Path(self.current_dir,"legend.svg")
@@ -105,6 +108,7 @@ class Legend(QWidget):
             if self.nanohub_flag:
                 # on nanoHUB, output_dir had better be "."  (i.e., in /tmpdir)
                 full_fname = os.path.join(self.output_dir, "legend.svg")
+                self.debug_tab.add_msg("reload_legend(): full_fname= " + str(full_fname))
                 if os.path.isfile(full_fname):
                     self.svgView.load(full_fname)
                     break
