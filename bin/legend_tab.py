@@ -94,8 +94,8 @@ class Legend(QWidget):
         print('reload_legend(): self.output_dir = ',self.output_dir)
         self.debug_tab.add_msg('reload_legend(): self.output_dir = '+self.output_dir)
 
-        for idx in range(4):
-            print("waiting for creation of legend.svg ...",idx)
+        for idx in range(16):  # random # of attempts - who the hell knows what nanoHUB is doing?
+            print("-- waiting for creation of legend.svg ...",idx)
             self.debug_tab.add_msg("waiting for creation of legend.svg ..." + str(idx))
             # path = Path("legend.svg")
             # if self.nanohub_flag:
