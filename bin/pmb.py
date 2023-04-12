@@ -498,6 +498,7 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
             # model_menu.addAction("celltypes3", self.celltypes3_nanohub_cb)
             model_menu.addAction("pred_prey_farmer", self.pred_prey_nanohub_cb)
             model_menu.addAction("interactions", self.interactions_nanohub_cb)
+            model_menu.addAction("heterogeneity", self.heterogeneity_nanohub_cb)
 
         #--------------
         else:
@@ -1176,6 +1177,26 @@ PhysiCell Studio is provided "AS IS" without warranty of any kind. &nbsp; In no 
         else:
             self.run_tab.exec_name.setText('../interactions')
         self.vis_tab.show_edge = False
+        self.vis_tab.bgcolor = [1,1,1,1]
+
+
+    def heterogeneity_nanohub_cb(self):
+        name = "heterogeneity"
+        sample_file = Path(self.pmb_data_dir, name + ".xml")
+        self.config_file = sample_file
+        self.add_new_model(sample_file, True)
+        self.run_tab.config_file = sample_file
+        print("heterogeneity:   self.config_file = ",self.config_file)
+
+        self.show_sample_model()
+
+        if self.nanohub_flag:
+            self.run_tab.exec_name.setText('heterogeneity')
+            if not self.actual_nanohub_flag:
+                self.run_tab.exec_name.setText('../bin/heterogeneity')
+        else:
+            self.run_tab.exec_name.setText('../heterogeneity')
+        self.vis_tab.show_edge = True
         self.vis_tab.bgcolor = [1,1,1,1]
 
 

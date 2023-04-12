@@ -4,6 +4,7 @@ PROGRAM_NAME1:= biorobots
 PROGRAM_NAME2:= celltypes3
 PROGRAM_NAME3:= pred_prey
 PROGRAM_NAME4:= interactions
+PROGRAM_NAME5:= heterogeneity
 
 osRelease = $(shell lsb_release -r | sed -e "s/Release:\W*//" -e "s/\..*//")
 ifeq ($(osRelease),7)
@@ -107,6 +108,7 @@ ALL_OBJECTS1 := $(PhysiCell_OBJECTS) biorobots.o
 ALL_OBJECTS2 := $(PhysiCell_OBJECTS) celltypes3.o
 ALL_OBJECTS3 := $(PhysiCell_OBJECTS) pred_prey_farmer.o
 ALL_OBJECTS4 := $(PhysiCell_OBJECTS) interactions.o
+ALL_OBJECTS5 := $(PhysiCell_OBJECTS) heterogeneity.o
 
 # compile the project 
 
@@ -116,6 +118,7 @@ all: main-template.cpp $(ALL_OBJECTS0) $(ALL_OBJECTS1) $(ALL_OBJECTS2) $(ALL_OBJ
 	$(COMPILE_COMMAND) -o $(PROGRAM_NAME2) $(ALL_OBJECTS2) main-celltypes3.cpp 
 	$(COMPILE_COMMAND) -o $(PROGRAM_NAME3) $(ALL_OBJECTS3) main-pred-prey-farmer.cpp 
 	$(COMPILE_COMMAND) -o $(PROGRAM_NAME4) $(ALL_OBJECTS4) main-interactions.cpp 
+	$(COMPILE_COMMAND) -o $(PROGRAM_NAME5) $(ALL_OBJECTS5) main-heterogeneity.cpp 
 
 # PhysiCell core components	
 
@@ -216,6 +219,8 @@ pred_prey_farmer.o: ./custom_modules/pred_prey_farmer.cpp
 	$(COMPILE_COMMAND) -c ./custom_modules/pred_prey_farmer.cpp
 interactions.o: ./custom_modules/interactions.cpp 
 	$(COMPILE_COMMAND) -c ./custom_modules/interactions.cpp
+heterogeneity.o: ./custom_modules/heterogeneity.cpp 
+	$(COMPILE_COMMAND) -c ./custom_modules/heterogeneity.cpp
 
 	
 # next targets for nanoHUB
@@ -226,6 +231,7 @@ install:
 	install --mode 0755 -D $(PROGRAM_NAME2) $(BIN)/$(PROGRAM_NAME2)
 	install --mode 0755 -D $(PROGRAM_NAME3) $(BIN)/$(PROGRAM_NAME3)
 	install --mode 0755 -D $(PROGRAM_NAME4) $(BIN)/$(PROGRAM_NAME4)
+	install --mode 0755 -D $(PROGRAM_NAME5) $(BIN)/$(PROGRAM_NAME5)
 
 distclean: clean
 	rm -f $(BIN)/$(PROGRAM_NAME0)
@@ -233,6 +239,7 @@ distclean: clean
 	rm -f $(BIN)/$(PROGRAM_NAME2)
 	rm -f $(BIN)/$(PROGRAM_NAME3)
 	rm -f $(BIN)/$(PROGRAM_NAME4)
+	rm -f $(BIN)/$(PROGRAM_NAME5)
 	rm -rf $(BIN)/__pycache__
 	rm -rf ../.ipynb_checkpoints
 
@@ -243,6 +250,7 @@ clean:
 	rm -f $(PROGRAM_NAME2)
 	rm -f $(PROGRAM_NAME3)
 	rm -f $(PROGRAM_NAME4)
+	rm -f $(PROGRAM_NAME5)
 	
 data-cleanup:
 	rm -rf ./output
