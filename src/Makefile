@@ -112,7 +112,7 @@ ALL_OBJECTS5 := $(PhysiCell_OBJECTS) heterogeneity.o
 
 # compile the project 
 
-all: main-template.cpp $(ALL_OBJECTS0) $(ALL_OBJECTS1) $(ALL_OBJECTS2) $(ALL_OBJECTS3) $(ALL_OBJECTS4)
+all: main-template.cpp $(ALL_OBJECTS0) $(ALL_OBJECTS1) $(ALL_OBJECTS2) $(ALL_OBJECTS3) $(ALL_OBJECTS4) $(ALL_OBJECTS5)
 	$(COMPILE_COMMAND) -o $(PROGRAM_NAME0) $(ALL_OBJECTS0) main-template.cpp 
 	$(COMPILE_COMMAND) -o $(PROGRAM_NAME1) $(ALL_OBJECTS1) main-biorobots.cpp 
 	$(COMPILE_COMMAND) -o $(PROGRAM_NAME2) $(ALL_OBJECTS2) main-celltypes3.cpp 
