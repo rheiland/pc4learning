@@ -1,23 +1,42 @@
 """
 Authors:
 Randy Heiland (heiland@iu.edu)
-Adam Morrow, Grant Waldrow, Drew Willis, Kim Crevecoeur
 Dr. Paul Macklin (macklinp@iu.edu)
+Rf. Credits.md
 """
 
 import sys
 import logging
-# import xml.etree.ElementTree as ET  # https://docs.python.org/2/library/xml.etree.elementtree.html
+import os
+from pathlib import Path
+import xml.etree.ElementTree as ET  # https://docs.python.org/2/library/xml.etree.elementtree.html
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtWidgets import QFrame,QApplication,QWidget,QTabWidget,QLineEdit, QVBoxLayout,QRadioButton,QLabel,QCheckBox,QComboBox,QScrollArea,QGridLayout
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QFrame,QApplication,QWidget,QTabWidget,QLineEdit, QVBoxLayout,QRadioButton,QPushButton, QLabel,QCheckBox,QComboBox,QScrollArea,QGridLayout, QFileDialog
+# from PyQt5.QtWidgets import QMessageBox
 
-class QHLine(QFrame):
-    def __init__(self):
-        super(QHLine, self).__init__()
-        self.setFrameShape(QFrame.HLine)
-        self.setFrameShadow(QFrame.Sunken)
+class QCheckBox_custom(QCheckBox):  # it's insane to have to do this!
+    def __init__(self,name):
+        super(QCheckBox, self).__init__(name)
 
+        checkbox_style = """
+                QCheckBox::indicator:checked {
+                    background-color: rgb(255,255,255);
+                    border: 1px solid #5A5A5A;
+                    width : 15px;
+                    height : 15px;
+                    border-radius : 3px;
+                    image: url(images:checkmark.png);
+                }
+                QCheckBox::indicator:unchecked
+                {
+                    background-color: rgb(255,255,255);
+                    border: 1px solid #5A5A5A;
+                    width : 15px;
+                    height : 15px;
+                    border-radius : 3px;
+                }
+                """
+        self.setStyleSheet(checkbox_style)
 
 class Config(QWidget):
     # def __init__(self, nanohub_flag):
@@ -149,9 +168,14 @@ class Config(QWidget):
         self.config_tab_layout.addWidget(self.zdel, idx_row,5,1,1) # w, row, column, rowspan, colspan
 
         #----------
-        self.virtual_walls = QCheckBox("Virtual walls")
+        self.virtual_walls = QCheckBox_custom("virtual walls")
+        self.virtual_walls.setChecked(True)
         idx_row += 1
         self.config_tab_layout.addWidget(self.virtual_walls, idx_row,1,1,1) # w, row, column, rowspan, colspan
+
+        self.disable_auto_springs = QCheckBox_custom("disable springs")
+        self.disable_auto_springs.setChecked(True)
+        self.config_tab_layout.addWidget(self.disable_auto_springs, idx_row,2,1,1) # w, row, column, rowspan, colspan
 
         #============  Misc ================================
         label = QLabel("Times")
@@ -272,7 +296,30 @@ class Config(QWidget):
         self.config_tab_layout.addWidget(label, idx_row,icol,1,1) # w, row, column, rowspan, colspan
 
         #------
-        self.save_svg = QCheckBox("SVG")
+        self.save_svg = QCheckBox_custom("SVG")
+        # self.save_svg.setStyleSheet("QCheckBox::indicator"
+        #                         "{"
+        #                         "background-image :url(checkmark.png);"
+        #                         "}")
+        # self.save_svg.setStyleSheet("QCheckBox::indicator"
+        #                        "{"
+        #                        "width :30px;"
+        #                        "height :30px;"
+        #                        "}"
+        #                        "QCheckBox::indicator:unchecked:pressed"
+        #                        "{"
+        #                        "background-color : green;"
+        #                        "}")
+        # self.save_svg.setStyleSheet("QCheckBox::indicator"
+        #                        "{"
+        #                        "width :30px;"
+        #                        "height :30px;"
+        #                        "}"
+        #                        "QCheckBox::indicator:unchecked:pressed"
+        #                        "{"
+        #                        "background-color : green;"
+        #                        "}")
+        self.save_svg.setChecked(True)
         icol += 2
         self.config_tab_layout.addWidget(self.save_svg, idx_row,icol,1,1) # w, row, column, rowspan, colspan
 
@@ -295,8 +342,8 @@ class Config(QWidget):
         self.config_tab_layout.addWidget(label, idx_row,icol,1,1) # w, row, column, rowspan, colspan
 
         #------
-        self.save_full = QCheckBox("Full")
-        icol += 1
+        self.save_full = QCheckBox_custom("Full")
+        icol += 2
         self.config_tab_layout.addWidget(self.save_full, idx_row,icol,1,1) # w, row, column, rowspan, colspan
 
         # label = QLabel("every")
@@ -322,7 +369,7 @@ class Config(QWidget):
         self.config_tab_layout.addWidget(label, idx_row,0,1,20) # w, row, column, rowspan, colspan
 
         idx_row += 1
-        self.cells_csv = QCheckBox("enable")
+        self.cells_csv = QCheckBox_custom("enable")
         self.cells_csv.setEnabled(True)
         icol = 1
         self.config_tab_layout.addWidget(self.cells_csv, idx_row,icol,1,1) # w, row, column, rowspan, colspan
@@ -332,9 +379,9 @@ class Config(QWidget):
         icol += 1
         self.config_tab_layout.addWidget(label, idx_row,icol,1,1) # w, row, column, rowspan, colspan
 
-        self.csv_folder = QLineEdit("foofolder")
-        # if self.nanohub_flag:
-        #     self.csv_folder.setEnabled(False)
+        self.csv_folder = QLineEdit()
+        if self.nanohub_flag:
+            self.folder.setEnabled(False)
         icol += 1
         self.config_tab_layout.addWidget(self.csv_folder, idx_row,icol,1,1) # w, row, column, rowspan, colspan
 
@@ -347,6 +394,11 @@ class Config(QWidget):
         icol += 1
         self.config_tab_layout.addWidget(self.csv_file, idx_row,icol,1,2) # w, row, column, rowspan, colspan
 
+        self.import_seeding_button = QPushButton("Import")
+        self.import_seeding_button.setFixedWidth(100)
+        self.import_seeding_button.setStyleSheet("background-color: lightgreen; color: black")
+        self.import_seeding_button.clicked.connect(self.import_seeding_cb)
+        self.config_tab_layout.addWidget(self.import_seeding_button, idx_row, 7, 1, 1)
 
         self.insert_hacky_blank_lines(self.config_tab_layout)
 
@@ -397,10 +449,24 @@ class Config(QWidget):
         self.zmax.setText(self.xml_root.find(".//z_max").text)
         self.zdel.setText(self.xml_root.find(".//dz").text)
 
-        self.virtual_walls.setChecked(False)
         if self.xml_root.find(".//virtual_wall_at_domain_edge") is not None:
+            # print("\n\n---------virtual_wall text.lower()=",self.xml_root.find(".//virtual_wall_at_domain_edge").text.lower())
+            check = self.xml_root.find(".//virtual_wall_at_domain_edge").text.lower()
+            # print("---------virtual_wall check=",check)
+            # print("---------type(check)=",type(check))
+            # print("---------check.find('true')=",check.find('true'))
             if self.xml_root.find(".//virtual_wall_at_domain_edge").text.lower() == "true":
+                # print("--------- doing self.virtual_walls.setChecked(True)")
                 self.virtual_walls.setChecked(True)
+            else:
+                self.virtual_walls.setChecked(False)
+        else:
+            print("\n\n---------virtual_wall_at_domain_edge is None !!!!!!!!!!!!1")
+
+        self.disable_auto_springs.setChecked(False)
+        if self.xml_root.find(".//disable_automated_spring_adhesions") is not None:
+            if self.xml_root.find(".//disable_automated_spring_adhesions").text.lower() == "true":
+                self.disable_auto_springs.setChecked(True)
         
         self.max_time.setText(self.xml_root.find(".//max_time").text)
         self.diffusion_dt.setText(self.xml_root.find(".//dt_diffusion").text)
@@ -429,19 +495,8 @@ class Config(QWidget):
         uep = self.xml_root.find(".//initial_conditions//cell_positions")
         if uep == None:  # not present
             return
-        print("--- config_tab.py: fill_gui(): self.csv_folder.setText= ../data")
-        folder_str = self.xml_root.find(".//initial_conditions//cell_positions//folder").text
-        if folder_str:
-            print("-- config_tab.py: csv folder_str=",folder_str)
-            self.csv_folder.setText(folder_str)
-
-        file_str = self.xml_root.find(".//initial_conditions//cell_positions//filename").text
-        if file_str:
-            self.csv_file.setText(file_str)
-        # if self.nanohub_flag:
-        #     print("--- config_tab.py: fill_gui(): self.csv_folder.setText= ../data")
-        #     self.csv_folder.setText('../data')
-
+        self.csv_folder.setText(self.xml_root.find(".//initial_conditions//cell_positions//folder").text)
+        self.csv_file.setText(self.xml_root.find(".//initial_conditions//cell_positions//filename").text)
         if uep.attrib['enabled'].lower() == 'true':
             self.cells_csv.setChecked(True)
         else:
@@ -456,6 +511,7 @@ class Config(QWidget):
         indent8 = '\n        '
         indent10 = '\n          '
 
+        # print(f"\nconfig_tab: fill_xml: =self.xml_root = {self.xml_root}" )
         # print("config_tab: fill_xml: xmin=",self.xmin.text() )
         self.xml_root.find(".//x_min").text = self.xmin.text()
         self.xml_root.find(".//x_max").text = self.xmax.text()
@@ -493,12 +549,35 @@ class Config(QWidget):
         #     print("------ Missing <options> in config .xml.  HALT.")
         #     sys.exit(1)
 
+                # subelm = ET.SubElement(elm, 'physical_parameter_set')
+                # subelm.text = indent10
+                # subelm.tail = indent8
 
-        # rwh: I ended up *requiring* the original .xml (which is copied) have the <virtual_wall_at_domain_edge...> element.
+                # subelm2 = ET.SubElement(subelm, "diffusion_coefficient",{"units":"micron^2/min"})
+                # subelm2.text = self.param_d[substrate]["diffusion_coef"]
+                # subelm2.tail = indent10
+
+        # do not *require* the input .xml to have these tags; insert them if missing
         bval = "false"
         if self.virtual_walls.isChecked():
             bval = "true"
-        self.xml_root.find(".//virtual_wall_at_domain_edge").text = bval
+        if self.xml_root.find(".//virtual_wall_at_domain_edge") is not None:
+            self.xml_root.find(".//virtual_wall_at_domain_edge").text = bval
+        else:  # missing in original; insert it (happens at write)
+            uep = self.xml_root.find('.//options')
+            subelm = ET.SubElement(uep, "virtual_wall_at_domain_edge")
+            subelm.text = bval
+
+        bval = "false"
+        if self.disable_auto_springs.isChecked():
+            bval = "true"
+        if self.xml_root.find(".//disable_automated_spring_adhesions") is not None:
+            self.xml_root.find(".//disable_automated_spring_adhesions").text = bval
+        else:  # missing in original; insert it (happens at write)
+            uep = self.xml_root.find('.//options')
+            subelm = ET.SubElement(uep, "disable_automated_spring_adhesions")
+            subelm.text = bval
+
 
         # rwh: Not sure why I couldn't get this to work, i.e., to *insert* the element (just one time) if it didn't exist.
         # vwall = self.xml_root.find(".//virtual_wall_at_domain_edge")
@@ -535,12 +614,13 @@ class Config(QWidget):
         #     opts.insert(0,subelm)
 
         self.xml_root.find(".//max_time").text = self.max_time.text()
+        # print(f'------- config_tab.py: fill_xml(): update max_time = {self.max_time.text()}')
         self.xml_root.find(".//dt_diffusion").text = self.diffusion_dt.text()
         self.xml_root.find(".//dt_mechanics").text = self.mechanics_dt.text()
         self.xml_root.find(".//dt_phenotype").text = self.phenotype_dt.text()
         self.xml_root.find(".//omp_num_threads").text = self.num_threads.text()
         self.xml_root.find(".//folder").text = self.folder.text()
-        logging.debug(f'------- config_tab.py: fill_xml(): setting folder = {self.folder.text()}')
+        # print(f'------- config_tab.py: fill_xml(): setting folder = {self.folder.text()}')
 
         if self.save_svg.isChecked():
             self.xml_root.find(".//SVG//enable").text = 'true'
@@ -560,12 +640,16 @@ class Config(QWidget):
         else:
             self.xml_root.find(".//initial_conditions//cell_positions").attrib['enabled'] = 'false'
 
+        if self.xml_root.find(".//initial_conditions") is None: 
+            print("\n ===  ERROR: Original XML is missing <initial_conditions> block\n")
+            return
+
         # self.xml_root.find(".//initial_conditions//cell_positions/folder").text = './data'
         self.xml_root.find(".//initial_conditions//cell_positions/folder").text = self.csv_folder.text()
-        logging.debug(f'------- config_tab.py: fill_xml(): setting csv folder = {self.csv_folder.text()}')
+        # print(f'------- config_tab.py: fill_xml(): setting csv folder = {self.csv_folder.text()}')
 
         self.xml_root.find(".//initial_conditions//cell_positions/filename").text = self.csv_file.text()
-        logging.debug(f'------- config_tab.py: fill_xml(): setting csv filename = {self.csv_file.text()}')
+        # print(f'------- config_tab.py: fill_xml(): setting csv filename = {self.csv_file.text()}')
         # if self.csv_rb1.isChecked():
         #     self.xml_root.find(".//initial_conditions//cell_positions/filename").text = 'all_cells.csv'
         # else:
@@ -591,3 +675,43 @@ class Config(QWidget):
         # xml_root.find(".//SVG").find(".//interval").text = str(self.svg_interval.value)
         # xml_root.find(".//full_data").find(".//enable").text = str(self.toggle_mcds.value)
         # xml_root.find(".//full_data").find(".//interval").text = str(self.mcds_interval.value)
+
+            #-----------------------------------------------------------
+    def import_seeding_cb(self):
+        # filePath = QFileDialog.getOpenFileName(self,'',".",'*.xml')
+        filePath = QFileDialog.getOpenFileName(self,'',".")
+        full_path_rules_name = filePath[0]
+        # logging.debug(f'\nimport_seeding_cb():  full_path_rules_name ={full_path_rules_name}')
+        print(f'\nimport_seeding_cb():  full_path_rules_name ={full_path_rules_name}')
+        basename = os.path.basename(full_path_rules_name)
+        print(f'import_seeding_cb():  basename ={basename}')
+        dirname = os.path.dirname(full_path_rules_name)
+        print(f'import_seeding_cb():  dirname ={dirname}')
+        # if (len(full_path_rules_name) > 0) and Path(full_path_rules_name):
+        if (len(full_path_rules_name) > 0) and Path(full_path_rules_name).is_file():
+            print("import_seeding_cb():  filePath is valid")
+            # logging.debug(f'     filePath is valid')
+            print("len(full_path_rules_name) = ", len(full_path_rules_name) )
+            # logging.debug(f'     len(full_path_rules_name) = {len(full_path_rules_name)}' )
+            self.csv_folder.setText(dirname)
+            self.csv_file.setText(basename)
+            # fname = os.path.basename(full_path_rules_name)
+            # self.current_xml_file = full_path_rules_name
+
+            # self.add_new_model(self.current_xml_file, True)
+            # self.config_file = self.current_xml_file
+            # if self.studio_flag:
+            #     self.run_tab.config_file = self.current_xml_file
+            #     self.run_tab.config_xml_name.setText(self.current_xml_file)
+            # self.show_sample_model()
+            # self.fill_gui()
+
+            # arg! how does it not catch this as an invalid file above??
+            # in fill_rules():  full_rules_fname= /Users/heiland/git/data/tumor_rules.csv
+            print(f'import_seeding_cb():  (guess) calling fill_rules() with ={full_path_rules_name}')
+            # if not self.nanohub_flag:
+            #     full_path_rules_name = os.path.abspath(os.path.join(self.homedir,'tmpdir',folder_name, file_name))
+            #     print(f'import_seeding_cb():  NOW calling fill_rules() with ={full_path_rules_name}')
+
+        else:
+            print("import_seeding_cb():  full_path_model_name is NOT valid")

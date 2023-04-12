@@ -207,7 +207,8 @@ class PhysiCellXMLCreator(QWidget):
 
         # self.tab2.tree.setCurrentItem(QTreeWidgetItem,0)  # item
 
-        self.celldef_tab = CellDef(self.dark_mode)
+        # self.celldef_tab = CellDef(self.dark_mode)
+        self.celldef_tab = CellDef()
         self.celldef_tab.xml_root = self.xml_root
 
         cd_name = self.celldef_tab.first_cell_def_name()
