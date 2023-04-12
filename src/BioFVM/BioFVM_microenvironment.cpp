@@ -261,6 +261,11 @@ void Microenvironment::set_substrate_dirichlet_activation( int substrate_index ,
 bool Microenvironment::get_substrate_dirichlet_activation( int substrate_index, int index )
 { return dirichlet_activation_vectors[index][substrate_index]; }
 
+
+// rwh: ugh, confusing swapped usage of args
+double Microenvironment::get_substrate_dirichlet_value( int substrate_index, int index )  //rwh
+{ return dirichlet_value_vectors[index][substrate_index]; }  
+
 void Microenvironment::apply_dirichlet_conditions( void )
 {
 	/*

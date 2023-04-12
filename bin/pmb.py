@@ -230,7 +230,8 @@ class PhysiCellXMLCreator(QWidget):
 
         self.microenv_tab.celldef_tab = self.celldef_tab
 
-        self.user_params_tab = UserParams(self.dark_mode)
+        # self.user_params_tab = UserParams(self.dark_mode)
+        self.user_params_tab = UserParams()
         self.user_params_tab.xml_root = self.xml_root
         self.user_params_tab.fill_gui()
 
