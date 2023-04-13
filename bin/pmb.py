@@ -199,7 +199,7 @@ class PhysiCellXMLCreator(QWidget):
         else:
             print("pmb.py: ---- FALSE nanohub_flag: NOT updating config_tab folder")
 
-        self.microenv_tab = SubstrateDef()
+        self.microenv_tab = SubstrateDef(self.config_tab)
         self.microenv_tab.xml_root = self.xml_root
         substrate_name = self.microenv_tab.first_substrate_name()
         # print("pmb.py: first_substrate_name=",substrate_name)
