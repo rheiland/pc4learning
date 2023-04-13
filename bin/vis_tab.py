@@ -173,7 +173,16 @@ class PopulationPlotWindow(QWidget):
         self.canvas.setStyleSheet("background-color:transparent;")
         self.ax0 = self.figure.add_subplot(111, adjustable='box')
         self.layout.addWidget(self.canvas)
+
+        self.dismiss_button = QPushButton("Dismiss")
+        # self.dismiss_button.setFixedWidth(arrow_button_width)
+        self.dismiss_button.clicked.connect(self.dismiss_plot_cb)
+        self.layout.addWidget(self.dismiss_button)
+
         self.setLayout(self.layout)
+
+    def dismiss_plot_cb(self):
+        self.close()
 
 class QHLine(QFrame):
     def __init__(self):
