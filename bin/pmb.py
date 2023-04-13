@@ -1467,7 +1467,8 @@ def main():
     palette.setColor(QPalette.Base, Qt.white)
     palette.setColor(QPalette.Text, Qt.black)
 
-    palette.setColor(QPalette.Button, QColor(230, 230, 0))  # light yellow: affects tree widget header and table headers
+    # palette.setColor(QPalette.Button, QColor(230, 230, 0))  # light yellow: affects tree widget header and table headers
+    palette.setColor(QPalette.Button, QColor(255, 255, 255))  # light yellow: affects tree widget header and table headers
 
     # palette.setColor(QPalette.ButtonText, Qt.white)  # e.g., header for tree widgets??
     # palette.setColor(QPalette.ButtonText, Qt.green)  # e.g., header for tree widgets??
