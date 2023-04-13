@@ -1435,6 +1435,10 @@ def main():
         # print("Error parsing command line args.")
         sys.exit(-1)
 
+    root = os.path.dirname(os.path.abspath(__file__))        
+    # QDir.addSearchPath('themes', os.path.join(root, 'themes'))
+    QtCore.QDir.addSearchPath('images', os.path.join(root, 'images'))
+
     pmb_app = QApplication(sys.argv)
 
     icon_path = os.path.join(os.path.dirname(sys.modules[__name__].__file__), 'physicell_logo_200px.png')
@@ -1445,6 +1449,43 @@ def main():
 
     logging.debug(f'QStyleFactory.keys() = {QStyleFactory.keys()}')
 
+    palette = QPalette()
+    rgb = 236
+    palette.setColor(QPalette.Window, QColor(rgb, rgb, rgb))
+    palette.setColor(QPalette.WindowText, Qt.black)
+
+    palette.setColor(QPalette.Base, QColor(25, 25, 25))
+    palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+    rgb = 100
+    palette.setColor(QPalette.Base, QColor(rgb, rgb, rgb))
+    palette.setColor(QPalette.AlternateBase, QColor(rgb, rgb, rgb))
+
+    palette.setColor(QPalette.ToolTipBase, Qt.black)
+    palette.setColor(QPalette.ToolTipText, Qt.white)
+
+    # for QLineEdit()
+    palette.setColor(QPalette.Base, Qt.white)
+    palette.setColor(QPalette.Text, Qt.black)
+
+    palette.setColor(QPalette.Button, QColor(230, 230, 0))  # light yellow: affects tree widget header and table headers
+
+    # palette.setColor(QPalette.ButtonText, Qt.white)  # e.g., header for tree widgets??
+    # palette.setColor(QPalette.ButtonText, Qt.green)  # e.g., header for tree widgets??
+    palette.setColor(QPalette.ButtonText, Qt.black)  # e.g., header for tree widget too?!
+
+    palette.setColor(QPalette.BrightText, Qt.red)
+    palette.setColor(QPalette.Link, QColor(42, 130, 218))
+    palette.setColor(QPalette.Highlight, QColor(236, 236, 236))   # background when user tabs through QLineEdits
+    palette.setColor(QPalette.Highlight, QColor(210, 210, 210))   # background when user tabs through QLineEdits
+    palette.setColor(QPalette.HighlightedText, Qt.black)
+
+    pmb_app.setPalette(palette)
+    # pmb_app.setStyleSheet("QCheckBox { background-color: red }")
+    # pmb_app.setStyleSheet("QLineEdit { background-color: white }; QComboBox { height: 34 } ")  # doesn't seem to always work, forcing us to take different approach in, e.g., Cell Types sub-tabs
+
+    pmb_app.setStyleSheet("QLineEdit { background-color: white };")  # doesn't seem to always work, forcing us to take different approach in, e.g., Cell Types sub-tabs
+
+    #--------- old:
     # pmb_app.setStyleSheet(open("pyqt5-dark-theme.stylesheet").read())
     # pmb_app.setStyleSheet(open("darkorange.stylesheet").read())
     # pmb_app.setStyleSheet(open("pmb_dark.stylesheet").read())
