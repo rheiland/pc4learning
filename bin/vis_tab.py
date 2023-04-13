@@ -26,9 +26,15 @@ from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 from matplotlib import gridspec
 from collections import deque
 import glob
+import csv
+import pandas
 
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QFrame,QApplication,QWidget,QTabWidget,QFormLayout,QLineEdit, QGroupBox, QHBoxLayout,QVBoxLayout,QRadioButton,QLabel,QCheckBox,QComboBox,QScrollArea,  QMainWindow,QGridLayout, QPushButton, QFileDialog, QMessageBox, QStackedWidget, QSplitter
+from PyQt5.QtSvg import QSvgWidget
+from PyQt5.QtGui import QPainter
+from PyQt5.QtCore import QRectF
+locale_en_US = QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates)
 
 import numpy as np
 import scipy.io
@@ -44,17 +50,142 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 # from matplotlib.figure import Figure
 
+class QCheckBox_custom(QCheckBox):  # it's insane to have to do this!
+    def __init__(self,name):
+        super(QCheckBox, self).__init__(name)
+
+        checkbox_style = """
+                QCheckBox::indicator:checked {
+                    background-color: rgb(255,255,255);
+                    border: 1px solid #5A5A5A;
+                    width : 15px;
+                    height : 15px;
+                    border-radius : 3px;
+                    image: url(images:checkmark.png);
+                }
+                QCheckBox::indicator:unchecked
+                {
+                    background-color: rgb(255,255,255);
+                    border: 1px solid #5A5A5A;
+                    width : 15px;
+                    height : 15px;
+                    border-radius : 3px;
+                }
+                """
+        self.setStyleSheet(checkbox_style)
+
+
+class SvgWidget(QSvgWidget):
+    def __init__(self, *args):
+        QSvgWidget.__init__(self, *args)
+
+    def paintEvent(self, event):
+        renderer = self.renderer()
+        if renderer != None:
+            painter = QPainter(self)
+            size = renderer.defaultSize()
+            ratio = size.height()/size.width()
+            length = min(self.width(), self.height())
+            renderer.render(painter, QRectF(0, 0, length, ratio * length))
+            painter.end()
+
+class Legend(QWidget):
+    # def __init__(self, doc_absolute_path, nanohub_flag):
+    def __init__(self, nanohub_flag):
+        super().__init__()
+
+        # self.doc_absolute_path = doc_absolute_path
+
+        self.process = None
+        self.output_dir = '.'   # set in pmb.py
+        self.current_dir = '.'   # reset in pmb.py
+        self.pmb_data_dir = ''   # reset in pmb.py
+        
+        #-------------------------------------------
+        self.scroll = QScrollArea()  # might contain centralWidget
+
+        self.svgView = SvgWidget()
+        self.vbox = QVBoxLayout()
+
+        self.svgView.setLayout(self.vbox)
+
+        self.scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        self.scroll.setWidgetResizable(True)
+        # self.scroll.setWidgetResizable(False)
+
+        self.scroll.setWidget(self.svgView) 
+        self.layout = QVBoxLayout(self)
+        self.layout.addWidget(self.scroll)
+
+    def clear_legend(self):
+        legend_file = os.path.join(self.pmb_data_dir, 'empty_legend.svg')
+        self.svgView.load(legend_file)
+
+    def reload_legend(self):
+        print('reload_legend(): self.output_dir = ',self.output_dir)
+        for idx in range(4):
+            print("waiting for creation of legend.svg ...",idx)
+            # path = Path("legend.svg")
+            path = Path(self.output_dir,"legend.svg")
+            # path = Path(self.current_dir,self.output_dir,"legend.svg")
+            print("path = ",path)
+            if path.is_file():
+            # try:
+                # self.svgView.load("legend.svg")
+                full_fname = os.path.join(self.output_dir, "legend.svg")
+                # full_fname = os.path.join(self.current_dir,self.output_dir, "legend.svg")
+                print("legend_tab.py: full_fname = ",full_fname)
+                self.svgView.load(full_fname)
+                break
+            # except:
+            #     path = Path(self.current_dir,self.output_dir,"legend.svg")
+            #     time.sleep(1)
+            else:
+                path = Path(self.output_dir,"legend.svg")
+                # path = Path(self.current_dir,self.output_dir,"legend.svg")
+                time.sleep(1)
+
+#------------------------------
+class LegendPlotWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.layout = QVBoxLayout()
+        # self.label = QLabel("Cell populations")
+        # self.layout.addWidget(self.label)
+
+        self.figure = plt.figure()
+        self.canvas = FigureCanvasQTAgg(self.figure)
+        self.canvas.setStyleSheet("background-color:transparent;")
+        self.ax0 = self.figure.add_subplot(111, adjustable='box')
+        self.layout.addWidget(self.canvas)
+        self.setLayout(self.layout)
+
+class PopulationPlotWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.layout = QVBoxLayout()
+        self.label = QLabel("Cell populations")
+        # self.layout.addWidget(self.label)
+
+        self.figure = plt.figure()
+        self.canvas = FigureCanvasQTAgg(self.figure)
+        self.canvas.setStyleSheet("background-color:transparent;")
+        self.ax0 = self.figure.add_subplot(111, adjustable='box')
+        self.layout.addWidget(self.canvas)
+        self.setLayout(self.layout)
+
 class QHLine(QFrame):
     def __init__(self):
         super(QHLine, self).__init__()
         self.setFrameShape(QFrame.HLine)
         self.setFrameShadow(QFrame.Sunken)
         # self.setFrameShadow(QFrame.Plain)
-        self.setStyleSheet("border:1px solid black")
+        # self.setStyleSheet("border:1px solid black")
 
 class Vis(QWidget):
 
-    def __init__(self, nanohub_flag):
+    def __init__(self, nanohub_flag, run_tab):
         super().__init__()
         # global self.config_params
 
@@ -62,8 +193,14 @@ class Vis(QWidget):
         self.mech_voxel_size = 30
 
         self.nanohub_flag = nanohub_flag
+        self.run_tab = run_tab
+        self.legend_tab = None
 
         self.bgcolor = [1,1,1,1]  # all 1.0 for white 
+
+        self.population_plot = None
+        self.celltype_name = []
+        self.celltype_color = []
 
         self.animating_flag = False
 
@@ -80,7 +217,8 @@ class Vis(QWidget):
         self.cells_edge_checked_flag = True
 
         self.num_contours = 50
-        self.shading_choice = 'auto'  # 'auto'(was 'flat') vs. 'gouraud' (smooth)
+        # self.shading_choice = 'auto'  # 'auto'(was 'flat') vs. 'gouraud' (smooth)
+        self.shading_choice = 'gouraud'  # 'auto'(was 'flat') vs. 'gouraud' (smooth)
 
         self.fontsize = 7
         self.label_fontsize = 6
@@ -102,6 +240,8 @@ class Vis(QWidget):
         self.show_plot_range = False
 
         # self.config_file = "mymodel.xml"
+        self.physiboss_node_dict = {}
+        
         self.reset_model_flag = True
         self.xmin = -80
         self.xmax = 80
@@ -115,13 +255,12 @@ class Vis(QWidget):
 
         self.aspect_ratio = 0.7
 
-        self.view_shading = None
-        self.show_voxel_grid = False
-        self.show_mech_grid = False
-        self.show_vectors = False
+        self.view_aspect_square = True
+        self.view_smooth_shading = False
 
-        # self.show_grid = False
-        # self.show_vectors = False
+        self.show_voxel_grid = False
+        self.show_mechanics_grid = False
+        self.show_vectors = False
 
         self.show_nucleus = False
         # self.show_edge = False
@@ -178,7 +317,53 @@ class Vis(QWidget):
         label_height = 20
         units_width = 70
 
+        # Beware: padding seems to alter the behavior; adding scroll arrows to choices list!
+                # padding-right: 8px; padding-left: 8px; padding-top: 3px; padding-bottom: 3px;
+                # height: 30px;
+            # QComboBox{
+            #     color: #000000;
+            #     background-color: #FFFFFF; 
+            #     height: 20px;
+            # }
+            # QComboBox:disabled {
+            #     background-color: rgb(199,199,199);
+            #     color: rgb(99,99,99);
+            # }
+        self.stylesheet = """ 
+            QPushButton{ border: 1px solid; border-color: rgb(145, 200, 145); border-radius: 1px;  background-color: lightgreen; color: black; width: 64px; padding-right: 8px; padding-left: 8px; padding-top: 3px; padding-bottom: 3px; } 
+            QPushButton:hover { border: 1px solid; border-radius: 3px; border-color: rgb(33, 77, 115); } QPushButton:focus { outline-color: transparent; border: 2px solid; border-color: rgb(151, 195, 243); } QPushButton:pressed{ background-color: rgb(145, 255, 145); } 
+            QPushButton:disabled { color: black; border-color: grey; background-color: rgb(199,199,199); }
+
+            """
+            # QPushButton{ font-family: "Segoe UI"; font-size: 8pt; border: 1px solid; border-color: rgb(46, 103, 156); border-radius: 3px; padding-right: 10px; padding-left: 10px; padding-top: 5px; padding-bottom: 5px; background-color: rgb(77, 138, 201); color: white; font: bold; width: 64px; } 
+            # QPushButton{
+            #     color:#000000;
+            #     background-color: lightgreen; 
+            #     border-style: outset;
+            #     border-color: black;
+            #     padding: 2px;
+            # }
+            # QLineEdit:disabled {
+            #     background-color: rgb(199,199,199);
+            #     color: rgb(99,99,99);
+            # }
+            # QPushButton:disabled {
+            #     background-color: rgb(199,199,199);
+            # }
+                # color: #000000;
+                # background-color: #FFFFFF; 
+                # border-style: outset;
+                # border-width: 2px;
+                # border-radius: 10px;
+                # border-color: beige;
+                # font: bold 14px;
+                # min-width: 10em;
+                # padding: 6px;
+                # padding: 1px 18px 1px 3px;
+
+
         self.substrates_combobox = QComboBox()
+        # self.substrates_combobox.setStyleSheet(self.stylesheet)
         self.substrates_combobox.setEnabled(False)
         self.field_dict = {}
         self.field_min_max = {}
@@ -193,6 +378,8 @@ class Vis(QWidget):
         self.substrates_cbar_combobox.setEnabled(False)
 
         self.scroll_plot = QScrollArea()  # might contain centralWidget
+
+        # Need to have the substrates_combobox before doing create_figure!
         self.create_figure()
 
         # self.config_params = QWidget()
@@ -201,14 +388,18 @@ class Vis(QWidget):
 
         # self.vbox = QVBoxLayout()
         # self.vbox.addStretch(0)
+        self.create_vis_UI()
 
-        #---------------------
+
+    def create_vis_UI(self):
+
         splitter = QSplitter()
         self.scroll_params = QScrollArea()
         splitter.addWidget(self.scroll_params)
 
         #---------------------
         self.stackw = QStackedWidget()
+        self.stackw.setStyleSheet(self.stylesheet)  # will/should apply to all children widgets
         # self.stackw.setCurrentIndex(0)
 
         self.controls1 = QWidget()
@@ -254,7 +445,7 @@ class Vis(QWidget):
         #------
         self.play_button = QPushButton("Play")
         self.play_button.setFixedWidth(70)
-        self.play_button.setStyleSheet("background-color : lightgreen")
+        # self.play_button.setStyleSheet("QPushButton {background-color: lightgreen; color: black;}")
         # self.play_button.clicked.connect(self.play_plot_cb)
         self.play_button.clicked.connect(self.animate)
         self.vbox.addWidget(self.play_button)
@@ -267,7 +458,7 @@ class Vis(QWidget):
         self.vbox.addWidget(QHLine())
 
         hbox = QHBoxLayout()
-        self.cells_checkbox = QCheckBox('cells')
+        self.cells_checkbox = QCheckBox_custom('cells')
         self.cells_checkbox.setChecked(True)
         self.cells_checkbox.clicked.connect(self.cells_toggle_cb)
         self.cells_checked_flag = True
@@ -297,7 +488,7 @@ class Vis(QWidget):
         # e.g., dict_keys(['ID', 'position_x', 'position_y', 'position_z', 'total_volume', 'cell_type', 'cycle_model', 'current_phase', 'elapsed_time_in_phase', 'nuclear_volume', 'cytoplasmic_volume', 'fluid_fraction', 'calcified_fraction', 'orientation_x', 'orientation_y', 'orientation_z', 'polarity', 'migration_speed', 'motility_vector_x', 'motility_vector_y', 'motility_vector_z', 'migration_bias', 'motility_bias_direction_x', 'motility_bias_direction_y', 'motility_bias_direction_z', 'persistence_time', 'motility_reserved', 'chemotactic_sensitivities_x', 'chemotactic_sensitivities_y', 'adhesive_affinities_x', 'adhesive_affinities_y', 'dead_phagocytosis_rate', 'live_phagocytosis_rates_x', 'live_phagocytosis_rates_y', 'attack_rates_x', 'attack_rates_y', 'damage_rate', 'fusion_rates_x', 'fusion_rates_y', 'transformation_rates_x', 'transformation_rates_y', 'oncoprotein', 'elastic_coefficient', 'kill_rate', 'attachment_lifetime', 'attachment_rate', 'oncoprotein_saturation', 'oncoprotein_threshold', 'max_attachment_distance', 'min_attachment_distance'])
 
 
-        self.cells_edge_checkbox = QCheckBox('edge')
+        self.cells_edge_checkbox = QCheckBox_custom('edge')
         self.cells_edge_checkbox.setChecked(True)
         self.cells_edge_checkbox.clicked.connect(self.cells_edge_toggle_cb)
         self.cells_edge_checked_flag = True
@@ -321,7 +512,8 @@ class Vis(QWidget):
 
         self.custom_button = QPushButton("append custom data")
         self.custom_button.setFixedWidth(150)
-        self.custom_button.setStyleSheet("background-color : lightgreen")
+        self.custom_button.setEnabled(False)
+        # self.custom_button.setStyleSheet("QPushButton {background-color: lightgreen; color: black;}")
         # self.play_button.clicked.connect(self.play_plot_cb)
         self.custom_button.clicked.connect(self.append_custom_cb)
         self.vbox.addWidget(self.custom_button)
@@ -330,7 +522,7 @@ class Vis(QWidget):
         self.vbox.addWidget(QHLine())
 
         # hbox = QHBoxLayout()
-        self.substrates_checkbox = QCheckBox('substrates')
+        self.substrates_checkbox = QCheckBox_custom('substrates')
         self.substrates_checkbox.setChecked(False)
         # self.substrates_checkbox.setEnabled(False)
         self.substrates_checkbox.clicked.connect(self.substrates_toggle_cb)
@@ -360,7 +552,7 @@ class Vis(QWidget):
 #     padding: 0px 5px 0px 5px;
 # }
 
-        self.fix_cmap_checkbox = QCheckBox('fix')
+        self.fix_cmap_checkbox = QCheckBox_custom('fix')
         self.fix_cmap_flag = False
         self.fix_cmap_checkbox.setEnabled(False)
         self.fix_cmap_checkbox.setChecked(self.fix_cmap_flag)
@@ -374,12 +566,13 @@ class Vis(QWidget):
         # label.setAlignment(QtCore.Qt.AlignLeft)
         hbox.addWidget(label)
         self.cmin = QLineEdit()
-        self.cmin.setEnabled(False)
         self.cmin.setText('0.0')
         # self.cmin.textChanged.connect(self.change_plot_range)
         self.cmin.returnPressed.connect(self.cmin_cmax_cb)
         self.cmin.setFixedWidth(cvalue_width)
-        self.cmin.setValidator(QtGui.QDoubleValidator())
+        cmin_validator = QtGui.QDoubleValidator()
+        cmin_validator.setLocale(locale_en_US)
+        self.cmin.setValidator(cmin_validator)
         self.cmin.setEnabled(False)
         hbox.addWidget(self.cmin)
 
@@ -388,18 +581,18 @@ class Vis(QWidget):
         label.setAlignment(QtCore.Qt.AlignCenter)
         hbox.addWidget(label)
         self.cmax = QLineEdit()
-        self.cmin.setEnabled(False)
         self.cmax.setText('1.0')
         self.cmax.returnPressed.connect(self.cmin_cmax_cb)
         self.cmax.setFixedWidth(cvalue_width)
-        self.cmax.setValidator(QtGui.QDoubleValidator())
+        cmax_validator = QtGui.QDoubleValidator()
+        cmax_validator.setLocale(locale_en_US)
+        self.cmax.setValidator(cmax_validator)
         self.cmax.setEnabled(False)
         hbox.addWidget(self.cmax)
 
         hbox.addStretch(1)  # not sure about this, but keeps buttons shoved to left
 
         self.vbox.addLayout(hbox)
-        # self.vbox.addWidget(groupbox)
 
         label = QLabel("(press 'Enter' if cmin or cmax changes)")
         self.vbox.addWidget(label)
@@ -414,152 +607,460 @@ class Vis(QWidget):
 
         # self.output_folder = QLineEdit(self.output_dir)
         self.output_folder = QLineEdit()
-        self.output_folder.returnPressed.connect(self.output_folder_cb)
+        self.output_folder.setEnabled(False)
+        # self.output_folder.returnPressed.connect(self.output_folder_cb)
         hbox.addWidget(self.output_folder)
+
+        # label = QLabel("(then 'Enter')")
+        # hbox.addWidget(label)
+        output_folder_button = QPushButton("Select")
+        output_folder_button.clicked.connect(self.output_folder_cb)
+        hbox.addWidget(output_folder_button)
+
         hbox.addStretch(1)  # not sure about this, but keeps buttons shoved to left
         self.vbox.addLayout(hbox)
 
+        # label = QLabel("(press 'Enter' to change)")
+        # self.vbox.addWidget(label)
+
+        self.vbox.addWidget(QHLine())
+
+        #------------------
+        self.cell_counts_button = QPushButton("Population plot")
+        # self.cell_counts_button.setStyleSheet("QPushButton {background-color: lightgreen; color: black;}")
+        self.cell_counts_button.setFixedWidth(200)
+        self.cell_counts_button.clicked.connect(self.cell_counts_cb)
+        self.vbox.addWidget(self.cell_counts_button)
+
+        self.physiboss_qline = None
+        self.physiboss_hbox_1 = None
+        
+        self.physiboss_vis_checkbox = None
+        self.physiboss_vis_flag = False
+        self.physiboss_selected_cell_line = None
+        self.physiboss_selected_node = None
+        self.physiboss_hbox_2 = None
+
+        self.physiboss_cell_type_combobox = None
+        self.physiboss_node_combobox = None
         #-----------
         self.frame_count.textChanged.connect(self.change_frame_count_cb)
 
         #-------------------
-        # self.controls2 = QWidget()
-        # # controls_hbox2 = QHBoxLayout()
-        # visible_flag = True
-
-        # label = QLabel("xmin")
-        # label.setFixedWidth(label_width)
-        # # label.setAlignment(QtCore.Qt.AlignRight)
-        # label.setAlignment(QtCore.Qt.AlignCenter)
-        # # controls_hbox2.addWidget(label)
-
-
-        # domain_value_width = 60
-        # self.my_xmin = QLineEdit()
-        # self.my_xmin.textChanged.connect(self.change_plot_range)
-        # self.my_xmin.setFixedWidth(domain_value_width)
-        # self.my_xmin.setValidator(QtGui.QDoubleValidator())
-        # # controls_hbox2.addWidget(self.my_xmin)
-        # self.my_xmin.setVisible(visible_flag)
-        # # controls_hbox2.addWidget(label)
-
-        # label = QLabel("xmax")
-        # label.setFixedWidth(label_width)
-        # label.setAlignment(QtCore.Qt.AlignCenter)
-        # # controls_hbox2.addWidget(label)
-        # self.my_xmax = QLineEdit()
-        # self.my_xmax.textChanged.connect(self.change_plot_range)
-        # self.my_xmax.setFixedWidth(domain_value_width)
-        # self.my_xmax.setValidator(QtGui.QDoubleValidator())
-        # # controls_hbox2.addWidget(self.my_xmax)
-        # self.my_xmax.setVisible(visible_flag)
-
-        # label = QLabel("ymin")
-        # label.setFixedWidth(label_width)
-        # label.setAlignment(QtCore.Qt.AlignCenter)
-        # # controls_hbox2.addWidget(label)
-        # self.my_ymin = QLineEdit()
-        # self.my_ymin.textChanged.connect(self.change_plot_range)
-        # self.my_ymin.setFixedWidth(domain_value_width)
-        # self.my_ymin.setValidator(QtGui.QDoubleValidator())
-        # # controls_hbox2.addWidget(self.my_ymin)
-        # self.my_ymin.setVisible(visible_flag)
-
-        # label = QLabel("ymax")
-        # label.setFixedWidth(label_width)
-        # label.setAlignment(QtCore.Qt.AlignCenter)
-        # # controls_hbox2.addWidget(label)
-        # self.my_ymax = QLineEdit()
-        # self.my_ymax.textChanged.connect(self.change_plot_range)
-        # self.my_ymax.setFixedWidth(domain_value_width)
-        # self.my_ymax.setValidator(QtGui.QDoubleValidator())
-        # # controls_hbox2.addWidget(self.my_ymax)
-        # self.my_ymax.setVisible(visible_flag)
-
-        # w = QPushButton("Reset")
-        # w.clicked.connect(self.reset_plot_range)
-        # # controls_hbox2.addWidget(w)
-
-        # self.my_xmin.setText(str(self.xmin))
-        # self.my_xmax.setText(str(self.xmax))
-        # self.my_ymin.setText(str(self.ymin))
-        # self.my_ymax.setText(str(self.ymax))
-
-        #-------------------
         self.substrates_combobox.currentIndexChanged.connect(self.substrates_combobox_changed_cb)
-        # self.substrates_cbar_combobox.currentIndexChanged.connect(self.colorbar_combobox_changed_cb)
         self.substrates_cbar_combobox.currentIndexChanged.connect(self.update_plots)
 
-        # self.cell_scalar_combobox.currentIndexChanged.connect(self.cell_scalar_combobox_changed_cb)
-        # self.cell_scalar_combobox.currentIndexChanged.connect(self.colorbar_combobox_changed_cb)
         self.cell_scalar_combobox.currentIndexChanged.connect(self.update_plots)
-        # self.cell_scalar_cbar_combobox.currentIndexChanged.connect(self.colorbar_combobox_changed_cb)
         self.cell_scalar_cbar_combobox.currentIndexChanged.connect(self.update_plots)
 
-        # controls_vbox = QVBoxLayout()
-        # controls_vbox.addLayout(controls_hbox)
-        # controls_vbox.addLayout(controls_hbox2)
-
         #==================================================================
-        # self.config_params.setLayout(self.vbox)
-
-        # self.vbox.addStretch()
-
-        # self.plot_params.setLayout(self.vbox)
-
         self.scroll_plot.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         self.scroll_plot.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         self.scroll_plot.setWidgetResizable(True)
-        # self.scroll_plot.setWidget(self.plot_params)
 
-
-        # self.scroll_plot.setWidget(self.config_params) # self.config_params = QWidget()
         self.scroll_plot.setWidget(self.canvas) # self.config_params = QWidget()
-        # self.layout = QVBoxLayout(self)
-        # self.layout.addLayout(controls_hbox)
-        # self.layout.addLayout(controls_hbox2)
-        # self.layout.addLayout(controls_vbox)
-
-        # self.layout.addWidget(self.controls1)
 
         self.stackw.addWidget(self.controls1)
-        # self.stackw.addWidget(self.controls2)
-        # self.stackw.addWidget(self.controls3)
-
         self.stackw.setCurrentIndex(0)
-        # self.stackw.setFixedHeight(40)
-        # self.stackw.resize(700,100)
-        # self.layout.addWidget(self.stackw)
-
-        # splitter.addWidget(self.stackw)
-        # splitter.addWidget(self.controls1)
 
         self.scroll_params.setWidget(self.stackw)
         splitter.addWidget(self.scroll_plot)
-        # splitter.addWidget(self.stackw)
 
         self.show_plot_range = False
-        # if self.show_plot_range:
-        #     self.layout.addWidget(self.controls2)
-        # self.layout.addWidget(self.my_xmin)
-        # self.layout.addWidget(self.scroll_plot)
         self.layout = QVBoxLayout(self)
         self.layout.addWidget(splitter)
-        # self.layout.addStretch()
 
-        # self.create_figure()
 
+    def get_cell_types_from_config(self):
+        config_file = self.run_tab.config_xml_name.text()
+        print("get_cell_types():  config_file=",config_file)
+        basename = os.path.basename(config_file)
+        print("get_cell_types():  basename=",basename)
+        out_config_file = os.path.join(self.output_dir, basename)
+        print("get_cell_types():  out_config_file=",out_config_file)
+
+        try:
+            self.tree = ET.parse(out_config_file)
+            self.xml_root = self.tree.getroot()
+        except:
+            msgBox = QMessageBox()
+            msgBox.setIcon(QMessageBox.Information)
+            msgBox.setText("Error opening or parsing " + out_config_file)
+            msgBox.setStandardButtons(QMessageBox.Ok)
+            msgBox.exec()
+            return False
+            # print("get_cell_types_from_config(): Error opening or parsing " + out_config_file)
+
+        try:
+            self.celltype_name.clear()
+            uep = self.xml_root.find('.//cell_definitions')  # find unique entry point
+            if uep:
+                idx = 0
+                for var in uep.findall('cell_definition'):
+                    name = var.attrib['name']
+                    self.celltype_name.append(name)
+            print("get_cell_types_from_config(): ",self.celltype_name)
+        except:
+            msgBox = QMessageBox()
+            msgBox.setIcon(QMessageBox.Information)
+            msgBox.setText("Error parsing " + out_config_file)
+            msgBox.setStandardButtons(QMessageBox.Ok)
+            msgBox.exec()
+            return False
+
+        return True
+
+
+    def get_cell_types_from_legend(self):
+        legend_file = os.path.join(self.output_dir, "legend.svg")
+        # print("--get_cell_types():  legend=",legend_file)
+        self.celltype_name.clear()
+        self.celltype_color.clear()
+
+        try:
+            self.tree = ET.parse(legend_file)
+            self.xml_root = self.tree.getroot()
+            print("xml_root=",self.xml_root)
+        except:
+            msgBox = QMessageBox()
+            msgBox.setIcon(QMessageBox.Information)
+            msgBox.setText("Error opening or parsing " + legend_file)
+            msgBox.setStandardButtons(QMessageBox.Ok)
+            msgBox.exec()
+            return False
+
+        try: 
+            for var in self.xml_root.findall('{http://www.w3.org/2000/svg}text'):
+                ctname = var.text.strip()
+                # print("-- ctname=",ctname)
+                self.celltype_name.append(ctname)
+            print(self.celltype_name)
+
+            idx = 0
+            for var in self.xml_root.findall('{http://www.w3.org/2000/svg}circle'):
+                if (idx % 2) == 0:  # some legend.svg only have color on 1st occurrence (e.g., biorobots)
+                    cattr = var.attrib
+                    # print("-- cattr=",cattr)
+                    # print("-- cattr['fill']=",cattr['fill'])
+                    self.celltype_color.append(cattr['fill'])
+                idx += 1
+        except:
+            msgBox = QMessageBox()
+            msgBox.setIcon(QMessageBox.Information)
+            msgBox.setText("Error parsing " + legend_file)
+            msgBox.setStandardButtons(QMessageBox.Ok)
+            msgBox.exec()
+            return False
+
+        return True
+
+
+    def cell_counts_cb(self):
+        print("---- cell_counts_cb(): --> window for 2D population plots")
+        # self.analysis_data_wait.value = 'compute n of N ...'
+
+        if not self.get_cell_types_from_legend():
+            if not self.get_cell_types_from_config():
+                return
+
+        xml_pattern = self.output_dir + "/" + "output*.xml"
+        xml_files = glob.glob(xml_pattern)
+        # print(xml_files)
+        num_xml = len(xml_files)
+        if num_xml == 0:
+            print("last_plot_cb(): WARNING: no output*.xml files present")
+            msgBox = QMessageBox()
+            msgBox.setIcon(QMessageBox.Information)
+            msgBox.setText("Could not find any " + self.output_dir + "/output*.xml")
+            msgBox.setStandardButtons(QMessageBox.Ok)
+            msgBox.exec()
+            return
+
+        xml_files.sort()
+        # print("sorted: ",xml_files)
+
+        mcds = []
+        for fname in xml_files:
+            basename = os.path.basename(fname)
+            # print("basename= ",basename)
+            # mcds = pyMCDS(basename, self.output_dir, microenv=False, graph=False, verbose=False)
+            mcds.append(pyMCDS(basename, self.output_dir, microenv=False, graph=False, verbose=False))
+
+        tval = np.linspace(0, mcds[-1].get_time(), len(xml_files))
+        # print("  max tval=",tval)
+
+        # self.yval4 = np.array( [(np.count_nonzero((mcds[idx].data['discrete_cells']['cell_type'] == 4) & (mcds[idx].data['discrete_cells']['cycle_model'] < 100.) == True)) for idx in range(ds_count)] )
+
+        if not self.population_plot:
+            self.population_plot = PopulationPlotWindow()
+
+        self.population_plot.ax0.cla()
+
+        # ctype_plot = []
+        lw = 2
+        # for itype, ctname in enumerate(self.celltypes_list):
+        print("  self.celltype_name=",self.celltype_name)
+        for itype in range(len(self.celltype_name)):
+            ctname = self.celltype_name[itype]
+            try:
+                ctcolor = self.celltype_color[itype]
+            except:
+                ctcolor = 'C' + str(itype)   # use random colors from matplotlib
+            print("  ctcolor=",ctcolor)
+            if 'rgb' in ctcolor:
+                rgb = ctcolor.replace('rgb','')
+                rgb = rgb.replace('(','')
+                rgb = rgb.replace(')','')
+                rgb = rgb.split(',')
+                print("--- rgb after split=",rgb)
+                ctcolor = [float(rgb[0])/255., float(rgb[1])/255., float(rgb[2])/255.]
+                print("--- converted rgb=",ctcolor)
+            yval = np.array( [(np.count_nonzero((mcds[idx].data['discrete_cells']['data']['cell_type'] == itype) & (mcds[idx].data['discrete_cells']['data']['cycle_model'] < 100.) == True)) for idx in range(len(mcds))] )
+            # yval = np.array( [(np.count_nonzero((mcds[idx].data['discrete_cells']['data']['cell_type'] == itype) == True)) for idx in range(len(mcds))] )
+            # print("  yval=",yval)
+
+            self.population_plot.ax0.plot(tval, yval, label=ctname, linewidth=lw, color=ctcolor)
+
+
+        self.population_plot.ax0.set_xlabel('time (mins)')
+        self.population_plot.ax0.set_ylabel('# of cells')
+        self.population_plot.ax0.set_title("cell populations", fontsize=10)
+        self.population_plot.ax0.legend(loc='center right', prop={'size': 8})
+        self.population_plot.canvas.update()
+        self.population_plot.canvas.draw()
+        # self.population_plot.ax0.legend(loc='center right', prop={'size': 8})
+        self.population_plot.show()
+
+    def disable_physiboss_info(self):
+        print("vis_tab: ------- disable_physiboss_info()")
+        if self.physiboss_vis_checkbox is not None:
+            print("vis_tab: ------- self.physiboss_vis_checkbox is not None; try disabling")
+            try:
+                self.physiboss_vis_checkbox.setChecked(False)
+                self.physiboss_vis_checkbox.setEnabled(False)
+                self.physiboss_cell_type_combobox.setEnabled(False)
+                self.physiboss_node_combobox.setEnabled(False)
+                self.physiboss_vis_hide()
+
+            except:
+                print("ERROR: Exception disabling physiboss widgets")
+                pass
+        else:
+            print("vis_tab: ------- self.physiboss_vis_checkbox is None")
+
+
+    def build_physiboss_info(self):
+        config_file = self.run_tab.config_xml_name.text()
+        print("build_physiboss_info(): get_cell_types():  config_file=",config_file)
+        basename = os.path.basename(config_file)
+        print("get_cell_types():  basename=",basename)
+        # out_config_file = os.path.join(self.output_dir, basename)
+        out_config_file = config_file
+        print("get_cell_types():  out_config_file=",out_config_file)
+
+        try:
+            self.tree = ET.parse(config_file)
+            self.xml_root = self.tree.getroot()
+        except:
+            msgBox = QMessageBox()
+            msgBox.setIcon(QMessageBox.Information)
+
+            msgBox.setText("build_physiboss_info(): Error opening or parsing " + out_config_file)
+
+            msgBox.setStandardButtons(QMessageBox.Ok)
+            msgBox.exec()
+            return False
+
+        
+        # tree = ET.parse(Path(self.config_path))
+        # xml_root = tree.getroot()
+        cell_defs = self.xml_root.find(".//cell_definitions")
+        self.physiboss_node_dict.clear()
+        
+        if cell_defs is not None:
+            for cell_def in cell_defs:
+                intracellular = cell_def.find("phenotype//intracellular")
+                
+                if intracellular is not None and intracellular.get("type").lower() == "maboss":
+                    self.physiboss_node_dict[cell_def.get("name")] = []
+                    bnd_filename = intracellular.find("bnd_filename").text
+                    
+                    list_nodes = []
+                    full_fname = os.path.join(os.getcwd(), bnd_filename)
+                    try:
+                        # with open(os.path.join(os.getcwd(), bnd_filename), "r") as bnd_file:
+                        with open(full_fname, "r") as bnd_file:
+                            for line in bnd_file.readlines():        
+                                if line.strip().lower().startswith("node"):
+                                    node = line.strip().split(" ")[1]
+                                    list_nodes.append(node)
+                    except:
+                        print("vis_tab:  ERROR opening/reading ",full_fname)
+                        msgBox = QMessageBox()
+                        msgBox.setIcon(QMessageBox.Information)
+                        msgBox.setText("Cannot open or read " + full_fname)
+                        msgBox.setStandardButtons(QMessageBox.Ok)
+                        msgBox.exec()
+                        return
+
+
+                    cfg_filename = intracellular.find("cfg_filename").text
+                    list_internal_nodes = []
+                    with open(os.path.join(os.getcwd(), cfg_filename), "r") as cfg_file:
+                        for line in cfg_file.readlines():        
+                            if "is_internal" in line:
+                                tokens = line.split("=")
+                                value = tokens[1].strip()[:-1].lower() in ["1", "true"]
+                                node = tokens[0].strip().replace(".is_internal", "")
+                                if value:
+                                    list_internal_nodes.append(node)
+
+                    list_output_nodes = list(set(list_nodes).difference(set(list_internal_nodes)))
+                    self.physiboss_node_dict[cell_def.get("name")] = list_output_nodes
+
+          
+        if len(self.physiboss_node_dict) > 0:
+            self.physiboss_vis_show()
+            self.fill_physiboss_cell_types_combobox(list(self.physiboss_node_dict.keys()))
+            self.fill_physiboss_nodes_combobox(self.physiboss_node_dict[list(self.physiboss_node_dict.keys())[0]])
+        else:
+            self.physiboss_vis_hide()
+            
+            
+    def physiboss_vis_show(self):
+
+        if self.physiboss_vis_checkbox is None:
+                
+            self.physiboss_qline = QHLine()
+            self.vbox.addWidget(self.physiboss_qline)
+            
+            self.physiboss_hbox_1 = QHBoxLayout()
+            
+            self.physiboss_vis_checkbox = QCheckBox_custom('Color by PhysiBoSS node state')
+            self.physiboss_vis_flag = False
+            self.physiboss_vis_checkbox.setEnabled(not self.plot_cells_svg)
+            self.physiboss_vis_checkbox.setChecked(self.physiboss_vis_flag)
+            self.physiboss_vis_checkbox.clicked.connect(self.physiboss_vis_toggle_cb)
+            self.physiboss_hbox_1.addWidget(self.physiboss_vis_checkbox)
+            
+            self.vbox.addLayout(self.physiboss_hbox_1)
+            
+            self.physiboss_hbox_2 = QHBoxLayout()
+
+            self.physiboss_cell_type_combobox = QComboBox()
+            self.physiboss_cell_type_combobox.setEnabled(False)
+            self.physiboss_cell_type_combobox.currentIndexChanged.connect(self.physiboss_vis_cell_type_cb)
+            self.physiboss_node_combobox = QComboBox()
+            self.physiboss_node_combobox.setEnabled(False)
+            self.physiboss_node_combobox.currentIndexChanged.connect(self.physiboss_vis_node_cb)
+            self.physiboss_hbox_2.addWidget(self.physiboss_cell_type_combobox)
+            self.physiboss_hbox_2.addWidget(self.physiboss_node_combobox)
+
+            self.vbox.addLayout(self.physiboss_hbox_2)
+        
+    def physiboss_vis_hide(self):
+        print("\n--------- physiboss_vis_hide()")
+
+        if self.physiboss_vis_checkbox is not None:
+            self.physiboss_vis_checkbox.disconnect()
+            self.physiboss_cell_type_combobox.disconnect()
+            self.physiboss_node_combobox.disconnect()
+            self.physiboss_qline.deleteLater()
+            
+            self.physiboss_vis_checkbox.deleteLater()
+            self.physiboss_hbox_1.deleteLater()
+
+            self.physiboss_cell_type_combobox.deleteLater()
+            self.physiboss_node_combobox.deleteLater()
+
+            self.physiboss_hbox_2.deleteLater()
+
+    def fill_physiboss_cell_types_combobox(self, cell_types):
+        self.physiboss_cell_type_combobox.clear()
+        for s in cell_types:
+            self.physiboss_cell_type_combobox.addItem(s)
+        self.physiboss_selected_cell_line = 0
+    
+    def fill_physiboss_nodes_combobox(self, nodes):
+        self.physiboss_node_combobox.clear()
+        for s in nodes:
+            self.physiboss_node_combobox.addItem(s)
+
+    def physiboss_vis_toggle_cb(self, bval):
+        self.physiboss_vis_flag = bval
+        self.physiboss_cell_type_combobox.setEnabled(bval)
+        self.physiboss_node_combobox.setEnabled(bval)
+        self.cell_scalar_combobox.setEnabled(not bval)
+        self.cell_scalar_cbar_combobox.setEnabled(not bval)
+        self.update_plots()
+        
+    def physiboss_vis_cell_type_cb(self, idx):
+        if idx > 0:
+            self.fill_physiboss_nodes_combobox(self.physiboss_node_dict[list(self.physiboss_node_dict.keys())[idx]])
+            self.physiboss_selected_cell_line = idx
+            self.update_plots()
+            
+    def physiboss_vis_node_cb(self, idx):
+        self.physiboss_selected_node = self.physiboss_node_dict[list(self.physiboss_node_dict.keys())[self.physiboss_selected_cell_line]][idx]
+        self.update_plots()
+        
     def output_folder_cb(self):
-        # print(f"output_folder_cb(): old={self.output_dir}")
+        print(f"output_folder_cb(): old={self.output_dir}")
         self.output_dir = self.output_folder.text()
-        # print(f"                    new={self.output_dir}")
+        print(f"                    new={self.output_dir}")
+        # filePath = QFileDialog.getOpenFileName(self,'',".")
+        dir_path = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+
+        print("\n\nselect_plot_output_cb():  dir_path=",dir_path)
+        # full_path_model_name = dirPath[0]
+        # print("\n\nselect_plot_output_cb():  full_path_model_name =",full_path_model_name )
+        # logging.debug(f'\npmb.py: select_plot_output_cb():  full_path_model_name ={full_path_model_name}')
+        # if (len(full_path_model_name) > 0) and Path(full_path_model_name).is_dir():
+        if dir_path == "":
+            return
+        if Path(dir_path).is_dir():
+            print("select_plot_output_cb():  dir_path is valid")
+            # print("len(full_path_model_name) = ", len(full_path_model_name) )
+            # logging.debug(f'     len(full_path_model_name) = {len(full_path_model_name)}' )
+            # fname = os.path.basename(full_path_model_name)
+            # self.current_xml_file = full_path_model_name
+
+            # self.add_new_model(self.current_xml_file, True)
+            # self.config_file = self.current_xml_file
+            # if self.studio_flag:
+            #     self.run_tab.config_file = self.current_xml_file
+            #     self.run_tab.config_xml_name.setText(self.current_xml_file)
+            # self.show_sample_model()
+
+            # self.vis_tab.output_dir = self.config_tab.folder.text()
+            # self.legend_tab.output_dir = self.config_tab.folder.text()
+            # self.vis_tab.output_dir = dir_path
+            # self.vis_tab.update_output_dir(dir_path)
+            # self.output_dir(dir_path)
+            self.output_dir = dir_path
+            self.output_folder.setText(dir_path)
+            self.legend_tab.output_dir = dir_path
+            legend_file = os.path.join(self.output_dir, 'legend.svg')  # hardcoded filename :(
+            if Path(legend_file).is_file():
+                self.legend_tab.reload_legend()
+            else:
+                self.legend_tab.clear_legend()
+
+            self.reset_model()
+            self.update_plots()
+
+        else:
+            print("vis_tab: output_folder_cb():  full_path_model_name is NOT valid")
 
     def cells_svg_mat_cb(self):
         radioBtn = self.sender()
         if "svg" in radioBtn.text():
             self.plot_cells_svg = True
+            self.custom_button.setEnabled(False)
             self.cell_scalar_combobox.setEnabled(False)
             self.cell_scalar_cbar_combobox.setEnabled(False)
+            if self.physiboss_vis_checkbox is not None:
+                self.physiboss_vis_checkbox.setEnabled(False)
             # self.fix_cmap_checkbox.setEnabled(bval)
 
             if self.cax2:
@@ -568,8 +1069,11 @@ class Vis(QWidget):
 
         else:
             self.plot_cells_svg = False
+            self.custom_button.setEnabled(True)
             self.cell_scalar_combobox.setEnabled(True)
             self.cell_scalar_cbar_combobox.setEnabled(True)
+            if self.physiboss_vis_checkbox is not None:
+                self.physiboss_vis_checkbox.setEnabled(True)
         # print("\n>>> calling update_plots() from "+ inspect.stack()[0][3])
         self.update_plots()
 
@@ -913,7 +1417,7 @@ class Vis(QWidget):
         self.current_svg_frame -= 1
         if self.current_svg_frame < 0:
             self.current_svg_frame = 0
-        print('back_plot_cb(): svg # ',self.current_svg_frame)
+        # print('back_plot_cb(): svg # ',self.current_svg_frame)
 
         self.update_plots()
 
@@ -956,7 +1460,28 @@ class Vis(QWidget):
 
             self.update_plots()
 
+    #----- View menu items
+    def view_aspect_toggle_cb(self,bval):
+        self.view_aspect_square = bval
+        print("vis_tab.py: self.view_aspect_square = ",self.view_aspect_square)
+        self.update_plots()
 
+    def shading_toggle_cb(self,bval):
+        if bval:
+            self.shading_choice = 'gouraud'  # 'auto'(was 'flat') vs. 'gouraud' (smooth)
+        else:
+            self.shading_choice = 'auto'  # 'auto'(was 'flat') vs. 'gouraud' (smooth)
+        self.update_plots()
+
+    def voxel_grid_toggle_cb(self,bval):
+        self.show_voxel_grid = bval
+        self.update_plots()
+
+    def mechanics_grid_toggle_cb(self,bval):
+        self.show_mechanics_grid = bval
+        self.update_plots()
+
+    #----------------------------------------------
     def cells_toggle_cb(self,bval):
         self.cells_checked_flag = bval
         self.cells_svg_rb.setEnabled(bval)
@@ -965,11 +1490,13 @@ class Vis(QWidget):
 
         if not self.cells_checked_flag:
             self.cell_scalar_combobox.setEnabled(False)
-
             if self.cax2:
-                self.cax2.remove()
-                self.cax2 = None
-
+                try:
+                    self.cax2.remove()
+                    self.cax2 = None
+                except:
+                    pass
+            
         # print("\n>>> calling update_plots() from "+ inspect.stack()[0][3])
         self.update_plots()
 
@@ -986,8 +1513,8 @@ class Vis(QWidget):
         self.substrates_combobox.setEnabled(bval)
         self.substrates_cbar_combobox.setEnabled(bval)
 
-        if self.view_shading:
-            self.view_shading.setEnabled(bval)
+        # if self.view_shading:
+        #     self.view_shading.setEnabled(bval)
 
         if not self.substrates_checked_flag:
             if self.cax1:
@@ -1045,6 +1572,11 @@ class Vis(QWidget):
         xml_file = os.path.join(self.output_dir, xml_file_root)
         if not Path(xml_file).is_file():
             print("append_custom_cb(): ERROR: file not found",xml_file)
+            msgBox = QMessageBox()
+            msgBox.setIcon(QMessageBox.Information)
+            msgBox.setText("Could not find file " + xml_file)
+            msgBox.setStandardButtons(QMessageBox.Ok)
+            msgBox.exec()
             return
 
         mcds = pyMCDS(xml_file_root, self.output_dir, microenv=False, graph=False, verbose=False)
@@ -1072,7 +1604,7 @@ class Vis(QWidget):
         if not self.animating_flag:
             self.animating_flag = True
             self.play_button.setText("Pause")
-            self.play_button.setStyleSheet("background-color : red")
+            # self.play_button.setStyleSheet("QPushButton {background-color: red; color: black;}")
 
             if self.reset_model_flag:
                 self.reset_model()
@@ -1084,7 +1616,7 @@ class Vis(QWidget):
         else:
             self.animating_flag = False
             self.play_button.setText("Play")
-            self.play_button.setStyleSheet("background-color : lightgreen")
+            # self.play_button.setStyleSheet("QPushButton {background-color: lightgreen; color: black;}")
             self.timer.stop()
 
 
@@ -1360,7 +1892,7 @@ class Vis(QWidget):
 
         if self.show_voxel_grid:
             self.plot_voxel_grid()
-        if self.show_mech_grid:
+        if self.show_mechanics_grid:
             self.plot_mechanics_grid()
 
         # if self.show_vectors:
@@ -1430,7 +1962,7 @@ class Vis(QWidget):
             if child.text and "Current time" in child.text:
                 svals = child.text.split()
                 # remove the ".00" on minutes
-                self.title_str += "   cells: " + svals[2] + "d, " + svals[4] + "h, " + svals[7][:-3] + "m"
+                self.title_str += svals[2] + " days, " + svals[4] + " hrs, " + svals[7][:-3] + " mins"
 
                 # self.cell_time_mins = int(svals[2])*1440 + int(svals[4])*60 + int(svals[7][:-3])
                 # self.title_str += "   cells: " + str(self.cell_time_mins) + "m"   # rwh
@@ -1622,7 +2154,10 @@ class Vis(QWidget):
             # print("--- plotting circles without edges!!")
             self.circles(xvals,yvals, s=rvals, color=rgbas )
 
-        self.ax0.set_aspect(1.0)
+        if self.view_aspect_square:
+            self.ax0.set_aspect('equal')
+        else:
+            self.ax0.set_aspect('auto')
     
     #-----------------------------------------------------
     def plot_cell_scalar(self, frame):
@@ -1632,7 +2167,7 @@ class Vis(QWidget):
             
         if self.show_voxel_grid:
             self.plot_voxel_grid()
-        if self.show_mech_grid:
+        if self.show_mechanics_grid:
             self.plot_mechanics_grid()
 
 
@@ -1657,15 +2192,55 @@ class Vis(QWidget):
         # mcds = pyMCDS(xml_file_root, "tmpdir", microenv=False, graph=False, verbose=True)
         total_min = mcds.get_time()
         # print("    time=",total_min)
-        try:
-            cell_scalar = mcds.get_cell_df()[cell_scalar_name]
-        except:
-            print("vis_tab.py: plot_cell_scalar(): error performing mcds.get_cell_df()[cell_scalar_name]")
-            return
+        
+        if self.physiboss_vis_flag:
+            try:
+                cell_types = mcds.get_cell_df()["cell_type"]
+            except:
+                print("vis_tab.py: plot_cell_scalar(): error performing mcds.get_cell_df()['cell_type']")
+                return
+            
+            physiboss_state_file = os.path.join(self.output_dir, "states_%08d.csv" % frame)
+            
+            if not Path(physiboss_state_file).is_file():
+                print("vis_tab.py: plot_cell_scalar(): error file not found ",physiboss_state_file)
+                return
+            
+            cell_scalar = {}
+            with open(physiboss_state_file, newline='') as csvfile:
+                states_reader = csv.reader(csvfile, delimiter=',')
+                    
+                for row in states_reader:
+                    if row[0] != 'ID':
+                        ID = int(row[0])
+                        if cell_types[ID] == self.physiboss_selected_cell_line:
+                            nodes = row[1].split(" -- ")                      
+                            if self.physiboss_selected_node in nodes:
+                                cell_scalar.update({ID: 2})      
+                            else:
+                                cell_scalar.update({ID: 0})
+                        else:
+                            cell_scalar.update({ID: 9})
+                            
+            cell_scalar = pandas.Series(cell_scalar)
+            
+            # To plot green/red/grey cells, we use a qualitative cell map called Set1
+            cbar_name = "Set1"
+            vmin = 0
+            vmax = 9
+            
+        else:
+            try:
+                cell_scalar = mcds.get_cell_df()[cell_scalar_name]
+            except:
+                print("vis_tab.py: plot_cell_scalar(): error performing mcds.get_cell_df()[cell_scalar_name]")
+                return
+        
+            vmin = cell_scalar.min()
+            vmax = cell_scalar.max()
+            
         num_cells = len(cell_scalar)
         # print("  len(cell_scalar) = ",len(cell_scalar))
-        vmin = cell_scalar.min()
-        vmax = cell_scalar.max()
         # fix_cmap = 0
         # print(f'   cell_scalar.min(), max() = {vmin}, {vmax}')
         cell_vol = mcds.get_cell_df()['total_volume']
@@ -1678,7 +2253,29 @@ class Vis(QWidget):
         xvals = mcds.get_cell_df()['position_x']
         yvals = mcds.get_cell_df()['position_y']
 
-        self.title_str = "(" + str(frame) + ") Current time: " + str(total_min) + "m"
+        # self.title_str += "   cells: " + svals[2] + "d, " + svals[4] + "h, " + svals[7][:-3] + "m"
+        # self.title_str = "(" + str(frame) + ") Current time: " + str(total_min) + "m"
+        
+        discrete_variable = None
+        # print(cell_scalar_name, " - discrete: ", (cell_scalar % 1  == 0).all()) # Possible test if the variable is discrete or continuum variable (issue: in some time the continuum variable can be classified as discrete (example time=0))
+        if( cell_scalar_name == 'cell_type' or cell_scalar_name == 'current_phase'): discrete_variable = list(set(cell_scalar)) # It's a set of possible value of the variable
+        if( discrete_variable ): # Generic way: if variable is discrete
+            self.cell_scalar_cbar_combobox.setEnabled(False)
+            from_list = matplotlib.colors.LinearSegmentedColormap.from_list
+            discrete_variable.sort()
+            if (len(discrete_variable) == 1): cbar_name = from_list(None, plt.cm.Set1(range(0,2)), len(discrete_variable))
+            else: cbar_name = from_list(None, plt.cm.Set1(range(0,len(discrete_variable))), len(discrete_variable))
+            vmin = None
+            vmax = None
+            # Change the values between 0 and number of possible values
+            for i, value in enumerate(discrete_variable):
+                cell_scalar = cell_scalar.replace(value,i)
+        else: self.cell_scalar_cbar_combobox.setEnabled(True)
+
+        mins = total_min
+        hrs = int(mins/60)
+        days = int(hrs/24)
+        self.title_str = '%d days, %d hrs, %d mins' % (days, hrs-days*24, mins-hrs*60)
         self.title_str += " (" + str(num_cells) + " agents)"
 
         axes_min = mcds.get_mesh()[0][0][0][0]
@@ -1686,7 +2283,7 @@ class Vis(QWidget):
 
         if (self.cells_edge_checked_flag):
             try:
-                cell_plot = self.circles(xvals,yvals, s=cell_radii, c=cell_scalar, edgecolor='black', linewidth=0.5, cmap=cbar_name)
+                cell_plot = self.circles(xvals,yvals, s=cell_radii, c=cell_scalar, edgecolor='black', linewidth=0.5, cmap=cbar_name, vmin=vmin, vmax=vmax)
             except (ValueError):
                 print("\n------ ERROR: Exception from circles with edges\n")
                 pass
@@ -1698,34 +2295,51 @@ class Vis(QWidget):
         # print("# axes = ",num_axes)
         # if num_axes > 1: 
         # if self.axis_id_cellscalar:
-        if self.cax2:
+        if not self.physiboss_vis_flag:
+            if self.cax2:
+                try:
+                    self.cax2.remove()
+                except:
+                    pass
+                # print("# axes(after cell_scalar remove) = ",len(self.figure.axes))
+                # print(" self.figure.axes= ",self.figure.axes)
+                #ppp
+                ax2_divider = make_axes_locatable(self.ax0)
+                self.cax2 = ax2_divider.append_axes("bottom", size="4%", pad="8%")
+                self.cbar2 = self.figure.colorbar(cell_plot, cax=self.cax2, orientation="horizontal")
+                # print("\n# axes(redraw cell_scalar) = ",len(self.figure.axes))
+                # print(" self.figure.axes= ",self.figure.axes)
+                # self.axis_id_cellscalar = len(self.figure.axes) - 1
+                self.cbar2.ax.tick_params(labelsize=self.fontsize)
+                self.cbar2.ax.set_xlabel(cell_scalar_name)
+            else:
+                ax2_divider = make_axes_locatable(self.ax0)
+                self.cax2 = ax2_divider.append_axes("bottom", size="4%", pad="8%")
+                self.cbar2 = self.figure.colorbar(cell_plot, cax=self.cax2, orientation="horizontal")
+                self.cbar2.ax.tick_params(labelsize=self.fontsize)
+                # print(" self.figure.axes= ",self.figure.axes)
+                self.cbar2.ax.set_xlabel(cell_scalar_name)
+        
+        elif self.cax2:
             try:
-                self.cax2.remove()
+                    self.cax2.remove()
             except:
                 pass
-            # print("# axes(after cell_scalar remove) = ",len(self.figure.axes))
-            # print(" self.figure.axes= ",self.figure.axes)
-            #ppp
-            ax2_divider = make_axes_locatable(self.ax0)
-            self.cax2 = ax2_divider.append_axes("bottom", size="4%", pad="8%")
-            self.cbar2 = self.figure.colorbar(cell_plot, cax=self.cax2, orientation="horizontal")
-            # print("\n# axes(redraw cell_scalar) = ",len(self.figure.axes))
-            # print(" self.figure.axes= ",self.figure.axes)
-            # self.axis_id_cellscalar = len(self.figure.axes) - 1
-            self.cbar2.ax.tick_params(labelsize=self.fontsize)
-            self.cbar2.ax.set_xlabel(cell_scalar_name)
-        else:
-            ax2_divider = make_axes_locatable(self.ax0)
-            self.cax2 = ax2_divider.append_axes("bottom", size="4%", pad="8%")
-            self.cbar2 = self.figure.colorbar(cell_plot, cax=self.cax2, orientation="horizontal")
-            self.cbar2.ax.tick_params(labelsize=self.fontsize)
-            # print(" self.figure.axes= ",self.figure.axes)
-            self.cbar2.ax.set_xlabel(cell_scalar_name)
-
+        
+        if( discrete_variable ): # Generic way: if variable is discrete
+            self.cbar2 = self.figure.colorbar(cell_plot, ticks=range(0,len(discrete_variable)), cax=self.cax2, orientation="horizontal")
+            # self.cbar2.ax.tick_params(length=0) # remove tick line
+            cell_plot.set_clim(vmin=-0.5,vmax=len(discrete_variable)-0.5) # scaling bar to the center of the ticks
+            self.cbar2.set_ticklabels(discrete_variable) # It's possible to give strings
+   
         self.ax0.set_title(self.title_str, fontsize=self.title_fontsize)
         self.ax0.set_xlim(self.plot_xmin, self.plot_xmax)
         self.ax0.set_ylim(self.plot_ymin, self.plot_ymax)
-        self.ax0.set_aspect(1.0)
+
+        if self.view_aspect_square:
+            self.ax0.set_aspect('equal')
+        else:
+            self.ax0.set_aspect('auto')
 
     #------------------------------------------------------------
     def plot_substrate(self, frame):
@@ -1864,4 +2478,8 @@ class Vis(QWidget):
         self.ax0.set_title(self.title_str, fontsize=self.title_fontsize)
         self.ax0.set_xlim(self.plot_xmin, self.plot_xmax)
         self.ax0.set_ylim(self.plot_ymin, self.plot_ymax)
-        self.ax0.set_aspect(1.0)
+
+        if self.view_aspect_square:
+            self.ax0.set_aspect('equal')
+        else:
+            self.ax0.set_aspect('auto')

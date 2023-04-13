@@ -342,7 +342,8 @@ class PhysiCellXMLCreator(QWidget):
 
             self.tabWidget.addTab(self.run_tab,"Run")
 
-            self.vis_tab = Vis(self.nanohub_flag)
+            # self.vis_tab = Vis(self.nanohub_flag)
+            self.vis_tab = Vis(self.nanohub_flag, self.run_tab)
             self.config_tab.vis_tab = self.vis_tab
             # self.vis_tab.output_dir = self.config_tab.folder.text()
             if self.nanohub_flag:  # rwh - test if works on nanoHUB
@@ -1367,7 +1368,8 @@ def main():
     rules_flag = False
     skip_validate_flag = False
     nanohub_flag = False
-    debug_flag = False
+    # debug_flag = False
+    debug_flag = True
     try:
         parser = argparse.ArgumentParser(description='PhysiCell Model Builder (and optional Studio).')
 
